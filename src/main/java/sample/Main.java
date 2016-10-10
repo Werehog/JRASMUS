@@ -65,7 +65,19 @@ public class Main extends Application {
             }
         });
 
-        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton), 400, 550));
+        Button downloadButton = new Button("Download from OneDrive");
+        uploadButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                oneDriveHandler.downloadFile("InfoSecIntro2014.pdf");
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Download finished!");
+                alert.setHeaderText("File downloaded from OneDrive!");
+                alert.showAndWait();
+            }
+        });
+
+        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton), 400, 550));
         stage.show();
     }
 

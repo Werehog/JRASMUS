@@ -7,6 +7,7 @@ import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.Iterator;
@@ -45,14 +46,6 @@ public class OneDriveHandler {
             connection = (HttpsURLConnection) url.openConnection();
 
             connection.setRequestMethod("POST");
-            //connection.setRequestProperty("Content-Length", "0");
-            /*connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            connection.setRequestProperty("client_id", "000000004818EA82");
-            connection.setRequestProperty("redirect_uri", "https://login.live.com/oauth20_desktop.srf");
-            connection.setRequestProperty("code", authCode);
-            connection.setRequestProperty("grant_type", "authorization_code");
-            connection.setRequestProperty("client_secret", "ktbuoDz9sBvHlcjtPFRO4-Gh7fdI-bzH");*/
-
 
             String content = "client_id=000000004818EA82" +
                     "&redirect_uri=https://login.live.com/oauth20_desktop.srf&client_secret=ktbuoDz9sBvHlcjtPFRO4-Gh7fdI-bzH" +
@@ -70,11 +63,6 @@ public class OneDriveHandler {
                     connection.getOutputStream());
             wr.writeBytes(content);
             wr.close();
-
-
-            System.out.println("Response code: " + connection.getResponseCode());
-            System.out.println("Response message: " + connection.getResponseMessage());
-
 
             //Print response body start
             /*BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
@@ -95,36 +83,7 @@ public class OneDriveHandler {
 
 
             //Print response package header start
-            StringBuilder builder = new StringBuilder();
-            builder.append(connection.getResponseCode())
-                    .append(" ")
-                    .append(connection.getResponseMessage())
-                    .append("\n");
-
-            Map<String, List<String>> map = connection.getHeaderFields();
-            for (Map.Entry<String, List<String>> entry : map.entrySet())
-            {
-                if (entry.getKey() == null)
-                    continue;
-                builder.append( entry.getKey())
-                        .append(": ");
-
-                List<String> headerValues = entry.getValue();
-                Iterator<String> it = headerValues.iterator();
-                if (it.hasNext()) {
-                    builder.append(it.next());
-
-                    while (it.hasNext()) {
-                        builder.append(", ")
-                                .append(it.next());
-                    }
-                }
-
-                builder.append("\n");
-            }
-
-            System.out.println("Builder");
-            System.out.println(builder);
+            printAllResponseHeaders(connection);
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -262,11 +221,14 @@ public class OneDriveHandler {
 
     private void uploadFragments(File file, String uploadLink) {
         int totalSize = Math.toIntExact(file.length());
-        int packageNumber = ( totalSize % packetSize ) + 1;
+        int packageNumber = ( totalSize / packetSize ) + 1;
         int uploadedBytesNr = 0;
 
+        ProgressWindow progressWindow = new ProgressWindow("Uploading file");
 
+        System.out.println("Package nr: " + packageNumber);
         for(int currentPacketNr = 0; currentPacketNr < packageNumber; currentPacketNr++) {
+            System.out.println(Integer.toString(currentPacketNr +1) + ". Package:");
             HttpsURLConnection connection = null;
             try {
                 URL url = new URL(uploadLink);
@@ -278,23 +240,39 @@ public class OneDriveHandler {
                 connection.setDoOutput(true);
 
                 if(totalSize - uploadedBytesNr < packetSize) {
-                    connection.setRequestProperty("Content-Length", Integer.toString(totalSize - uploadedBytesNr));
-                    connection.setRequestProperty("Content-Range", "bytes " + Integer.toString(currentPacketNr * packetSize) + "-" + Integer.toString(totalSize - 1) + "/" + Integer.toString(totalSize));
+                    //connection.setRequestProperty("Content-Length", Integer.toString(totalSize - uploadedBytesNr));
+                    String rangeHeader = "bytes " + Integer.toString(currentPacketNr * packetSize) + "-" + Integer.toString(totalSize - 1) + "/" + Integer.toString(totalSize);
+                    connection.setRequestProperty("Content-Range", rangeHeader);
+                    System.out.println("Content-Range: " + rangeHeader);
+
+                    connection.setFixedLengthStreamingMode(totalSize - uploadedBytesNr);
 
                     DataOutputStream wr = new DataOutputStream(
                             connection.getOutputStream());
-                    wr.write(Files.readAllBytes(file.toPath()), totalSize - uploadedBytesNr,currentPacketNr * packetSize);
+                    wr.write(Files.readAllBytes(file.toPath()), uploadedBytesNr, totalSize - uploadedBytesNr);
                     wr.close();
+
+                    uploadedBytesNr = totalSize;
                 }
                 else {
-                    connection.setRequestProperty("Content-Length", Integer.toString(packetSize));
-                    connection.setRequestProperty("Content-Range", "bytes " + Integer.toString(currentPacketNr * packetSize) + "-" + Integer.toString(currentPacketNr + 1) + "/" + Integer.toString(totalSize));
+                    //connection.setRequestProperty("Content-Length", Integer.toString(packetSize));
+                    String rangeHeader = "bytes " + Integer.toString(currentPacketNr * packetSize) + "-" + Integer.toString((currentPacketNr+1)*packetSize - 1) + "/" + Integer.toString(totalSize);
+                    connection.setRequestProperty("Content-Range", rangeHeader);
+                    System.out.println("Content-Range: " + rangeHeader);
+
+                    connection.setFixedLengthStreamingMode(packetSize);
 
                     DataOutputStream wr = new DataOutputStream(
                             connection.getOutputStream());
-                    wr.write(Files.readAllBytes(file.toPath()), packetSize,currentPacketNr * packetSize);
+                    wr.write(Files.readAllBytes(file.toPath()), uploadedBytesNr, packetSize);
                     wr.close();
+
+                    uploadedBytesNr += packetSize;
                 }
+
+                double progressPercent = ((double)uploadedBytesNr) / totalSize;
+                System.out.println(Double.toString(progressPercent) + " percent");
+                progressWindow.setProgress(progressPercent);
 
                 System.out.println(Integer.toString(currentPacketNr + 1) + ". fragment response: " + connection.getResponseCode());
                 System.out.println(connection.getResponseMessage());
@@ -312,10 +290,13 @@ public class OneDriveHandler {
             }
         }
 
+        progressWindow.close();
+
         //TODO: utolso uzenetet olvasni
     }
 
     private void cancelUpload(String uploadLink) {
+        //TODO: ellenorizni, kell-e
         System.out.println("cancelUpload called");
         HttpsURLConnection connection = null;
         try {
@@ -329,6 +310,9 @@ public class OneDriveHandler {
 
             System.out.println("Cancel response: " + connection.getResponseCode());
             System.out.println(connection.getResponseMessage());
+
+
+
         } catch (IOException e) {
             //openconn es malformed url miatt
             //TODO: malformedet lekezelni, io-t tovabbdobni: nincs internet detektalas :D
@@ -339,5 +323,73 @@ public class OneDriveHandler {
                 connection.disconnect();
             }
         }
+    }
+
+    public void downloadFile(String fileName) {
+        System.out.println("downloadFile called");
+
+        String downloadUrl = getDownloadUrl(fileName);
+    }
+
+    private String getDownloadUrl(String fileName) {
+        String downloadLink = "https://api.onedrive.com/v1.0/drive/special/approot:/" + fileName + ":/content";
+        URL url = null;
+        HttpsURLConnection connection = null;
+        try {
+            url = new URL(downloadLink);
+
+            connection = (HttpsURLConnection) url.openConnection();
+
+            connection.setDoOutput(true);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Authorization", "bearer " + accessToken);
+
+
+
+            System.out.println(connection.getResponseCode());
+            System.out.println(connection.getResponseMessage());
+
+            String location = connection.getHeaderField("Content-Location");
+            return location;
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (ProtocolException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private void printAllResponseHeaders(HttpsURLConnection connection) throws IOException {
+        StringBuilder builder = new StringBuilder();
+        builder.append(connection.getResponseCode())
+                .append(" ")
+                .append(connection.getResponseMessage())
+                .append("\n");
+        Map<String, List<String>> map = connection.getHeaderFields();
+        for (Map.Entry<String, List<String>> entry : map.entrySet())
+        {
+            if (entry.getKey() == null)
+                continue;
+            builder.append( entry.getKey())
+                    .append(": ");
+
+            List<String> headerValues = entry.getValue();
+            Iterator<String> it = headerValues.iterator();
+            if (it.hasNext()) {
+                builder.append(it.next());
+
+                while (it.hasNext()) {
+                    builder.append(", ")
+                            .append(it.next());
+                }
+            }
+
+            builder.append("\n");
+        }
+        System.out.println("Response Headers:");
+        System.out.println(builder);
     }
 }
