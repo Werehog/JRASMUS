@@ -1,5 +1,7 @@
 package sample;
 
+import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
+
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
@@ -9,7 +11,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
-import java.nio.file.Files;
+import java.nio.file.*;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -329,6 +331,8 @@ public class OneDriveHandler {
         System.out.println("downloadFile called");
 
         String downloadUrl = getDownloadUrl(fileName);
+
+        downloadContent(downloadUrl, fileName);
     }
 
     private String getDownloadUrl(String fileName) {
@@ -360,6 +364,94 @@ public class OneDriveHandler {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private void downloadContent(String location, String fileName) {
+        int packetSize = 1048576; //1 MiB
+        URL url = null;
+        HttpsURLConnection connection = null;
+        try {
+            url = new URL(location);
+
+            connection = (HttpsURLConnection) url.openConnection();
+
+            connection.setDoOutput(true);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Range", "bytes=0-" + Integer.toString(packetSize - 1));
+
+            printAllResponseHeaders(connection);
+
+            String contentRange = connection.getHeaderField("Content-Range");
+
+            int fileSize = Integer.parseInt(contentRange.substring(contentRange.indexOf("/") + 1));
+            System.out.println("FileSize: " + fileSize);
+
+
+            int contentLength = connection.getContentLength();
+            System.out.println("Content length from code: " + contentLength);
+            InputStream is = connection.getInputStream();
+            FileOutputStream fos = new FileOutputStream(new File(fileName));
+            byte[] buf = new byte[512];
+            while (true) {
+                int len = is.read(buf);
+                if (len == -1) {
+                    break;
+                }
+                fos.write(buf, 0, len);
+            }
+            is.close();
+            fos.flush();
+
+            if(fileSize > packetSize) {
+                int downloadedByteNr = packetSize;
+
+                while(downloadedByteNr < fileSize) {
+                    URL url2 = null;
+                    HttpsURLConnection connection2 = null;
+                    try {
+                        url2 = new URL(location);
+
+                        connection2 = (HttpsURLConnection) url2.openConnection();
+
+                        connection2.setDoOutput(true);
+                        connection2.setRequestMethod("GET");
+                        connection2.setRequestProperty("Range", "bytes=" + Integer.toString(downloadedByteNr) + "-" + Integer.toString(downloadedByteNr + packetSize - 1));
+
+                        printAllResponseHeaders(connection2);
+
+                        int contentLength2 = connection2.getContentLength();
+                        InputStream is2 = connection2.getInputStream();
+                        while (true) {
+                            int len = is2.read(buf);
+                            if (len == -1) {
+                                break;
+                            }
+                            fos.write(buf, 0, len);
+                        }
+                        is2.close();
+                        fos.flush();
+
+                        downloadedByteNr += contentLength2;
+
+                    } catch (MalformedURLException e) {
+                        e.printStackTrace();
+                    } catch (ProtocolException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            fos.close();
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (ProtocolException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void printAllResponseHeaders(HttpsURLConnection connection) throws IOException {

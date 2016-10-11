@@ -70,6 +70,8 @@ public class Main extends Application {
             @Override
             public void handle(ActionEvent event) {
                 oneDriveHandler.downloadFile("InfoSecIntro2014.pdf");
+                //oneDriveHandler.downloadFile("zh15_16_tavasz-info.pdf");
+                //oneDriveHandler.downloadFile("Hello.txt");
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("Download finished!");
                 alert.setHeaderText("File downloaded from OneDrive!");
