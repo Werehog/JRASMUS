@@ -79,7 +79,20 @@ public class Main extends Application {
             }
         });
 
-        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton), 400, 550));
+        Button listButton = new Button("List root dir");
+        uploadButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                oneDriveHandler.listFolder();
+
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("List finished!");
+                alert.setHeaderText("Listing finished from OneDrive!");
+                alert.showAndWait();
+            }
+        });
+
+        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton, listButton), 400, 550));
         stage.show();
     }
 

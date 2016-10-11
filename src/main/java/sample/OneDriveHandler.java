@@ -3,6 +3,7 @@ package sample;
 import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
 
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.net.ssl.HttpsURLConnection;
@@ -20,6 +21,8 @@ import java.util.Scanner;
 /**
  * Created by Richárd on 2016.09.13..
  */
+
+//TODO:finally blokkok a connectionnak vagy using blokk
 public class OneDriveHandler {
 
     private String accessToken;
@@ -452,6 +455,56 @@ public class OneDriveHandler {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void listFolder() {
+        HttpsURLConnection connection = null;
+        try {
+            URL url = new URL("https://api.onedrive.com/v1.0/drive/special/approot/children");
+            connection = (HttpsURLConnection) url.openConnection();
+
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Authorization", "bearer " + accessToken);
+
+            connection.setDoOutput(true);//Post vagy putnal kell ha akarunk adatot kuldeni
+
+            printAllResponseHeaders(connection);
+
+            //Print response body start
+            /*BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();*/
+
+            JsonReader jsonReader = Json.createReader(connection.getInputStream());
+            JsonObject jsonObject = jsonReader.readObject();
+            JsonArray array = jsonObject.getJsonArray("value");
+            for(int i=0; i<array.size(); i++) {
+                JsonObject object = array.getJsonObject(i);
+                String out = "Name: " + object.getString("name");
+                if(object.containsKey("folder")) {
+                    out += " (folder)";
+                }
+                System.out.println(out);
+            }
+
+        } catch (ProtocolException e) {
+            e.printStackTrace();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if(connection != null) {
+                connection.disconnect();
+            }
+        }
+
+        //TODO: nextlink ha 200nal tobb van
     }
 
     private void printAllResponseHeaders(HttpsURLConnection connection) throws IOException {
