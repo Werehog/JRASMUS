@@ -507,6 +507,32 @@ public class OneDriveHandler {
         //TODO: nextlink ha 200nal tobb van
     }
 
+    public void deleteFile(String fileName) {
+        HttpsURLConnection connection = null;
+        try {
+            URL url = new URL("https://api.onedrive.com/v1.0/drive/special/approot:/" + fileName);
+            connection = (HttpsURLConnection) url.openConnection();
+
+            connection.setRequestMethod("DELETE");
+            connection.setRequestProperty("Authorization", "bearer " + accessToken);
+
+            connection.setDoOutput(true);//Post vagy putnal kell ha akarunk adatot kuldeni
+
+            printAllResponseHeaders(connection);
+
+        } catch (ProtocolException e) {
+            e.printStackTrace();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if(connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
     private void printAllResponseHeaders(HttpsURLConnection connection) throws IOException {
         StringBuilder builder = new StringBuilder();
         builder.append(connection.getResponseCode())

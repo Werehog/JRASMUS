@@ -66,7 +66,7 @@ public class Main extends Application {
         });
 
         Button downloadButton = new Button("Download from OneDrive");
-        uploadButton.setOnAction(new EventHandler<ActionEvent>() {
+        downloadButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
                 oneDriveHandler.downloadFile("InfoSecIntro2014.pdf");
@@ -80,7 +80,7 @@ public class Main extends Application {
         });
 
         Button listButton = new Button("List root dir");
-        uploadButton.setOnAction(new EventHandler<ActionEvent>() {
+        listButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
                 oneDriveHandler.listFolder();
@@ -92,7 +92,20 @@ public class Main extends Application {
             }
         });
 
-        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton, listButton), 400, 550));
+        Button deleteButton = new Button("Delete file");
+        deleteButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                oneDriveHandler.deleteFile("SherryArgov.pdf");
+
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("File deleted!");
+                alert.setHeaderText("Deleting from OneDrive finished!");
+                alert.showAndWait();
+            }
+        });
+
+        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton), 400, 550));
         stage.show();
     }
 
