@@ -20,7 +20,7 @@ public class WebLogin {
     private WebView browser;
     private WebEngine webEngine;
 
-    private String flag;
+    private String authCode;
 
     private Stage stage;
 
@@ -46,15 +46,15 @@ public class WebLogin {
                     @Override public void changed(ObservableValue ov, Worker.State oldState, Worker.State newState) {
 
                         if (newState == Worker.State.SUCCEEDED && webEngine.getLocation().contains(trigger)) {
-                            //flag = webEngine.getLocation();
+                            //authCode = webEngine.getLocation();
                             System.out.println("url changed: " + webEngine.getLocation());
 
                             int codeStart = webEngine.getLocation().indexOf(trigger);
-                            flag = webEngine.getLocation().substring(codeStart + 5);
-                            int codeEnd = flag.indexOf("&");
+                            authCode = webEngine.getLocation().substring(codeStart + 5);
+                            int codeEnd = authCode.indexOf("&");
                             if(codeEnd != -1)
-                                flag = flag.substring(0, codeEnd);
-                            System.out.println(flag);
+                                authCode = authCode.substring(0, codeEnd);
+                            System.out.println(authCode);
                             stage.close();
                         }
 
@@ -69,8 +69,8 @@ public class WebLogin {
         stage.setScene(scene);
     }
 
-    public String getFlag() {
-        return flag;
+    public String getAuthCode() {
+        return authCode;
     }
 
     public void showAndWait() {

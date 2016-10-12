@@ -69,7 +69,7 @@ public class Main extends Application {
         downloadButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                oneDriveHandler.downloadFile("InfoSecIntro2014.pdf");
+                oneDriveHandler.downloadFile("Introduction to Java Programming, Comprehensive Version, 9 edition.pdf");
                 //oneDriveHandler.downloadFile("zh15_16_tavasz-info.pdf");
                 //oneDriveHandler.downloadFile("Hello.txt");
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -96,7 +96,7 @@ public class Main extends Application {
         deleteButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                oneDriveHandler.deleteFile("SherryArgov.pdf");
+                oneDriveHandler.deleteFile("Introduction to Java Programming, Comprehensive Version, 9 edition.pdf");
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("File deleted!");
