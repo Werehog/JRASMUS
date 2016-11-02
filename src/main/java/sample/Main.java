@@ -105,7 +105,53 @@ public class Main extends Application {
             }
         });
 
-        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton), 400, 550));
+        GoogleDriveHandler googleDriveHandler = new GoogleDriveHandler();
+
+        Button GDLoginButton = new Button("Google Drive Login");
+        GDLoginButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                googleDriveHandler.login();
+            }
+        });
+
+        Button gDriveUploadButton = new Button("Upload to GoogleDrive");
+        gDriveUploadButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                FileChooser fileChooser = new FileChooser();
+                File file = fileChooser.showOpenDialog(stage);
+                googleDriveHandler.uploadSmallFile(file);
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Upload finished!");
+                alert.setHeaderText("File uploaded to GoogleDrive!");
+                alert.showAndWait();
+            }
+        });
+
+        Button gDriveUploadBIGButton = new Button("UploadBIG to GoogleDrive");
+        gDriveUploadBIGButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                FileChooser fileChooser = new FileChooser();
+                File file = fileChooser.showOpenDialog(stage);
+                googleDriveHandler.uploadLargeFile(file);
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Upload finished!");
+                alert.setHeaderText("File uploaded to GoogleDrive!");
+                alert.showAndWait();
+            }
+        });
+
+        Button gDriveListFilesButton = new Button("List GoogleDrive");
+        gDriveListFilesButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                googleDriveHandler.listFolder();
+            }
+        });
+
+        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton, GDLoginButton,gDriveUploadButton, gDriveUploadBIGButton, gDriveListFilesButton), 400, 550));
         stage.show();
     }
 

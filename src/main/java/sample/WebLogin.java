@@ -11,6 +11,15 @@ import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.OutputStreamWriter;
 
 /**
  * Created by Richárd on 2016.09.13..
@@ -44,7 +53,13 @@ public class WebLogin {
         webEngine.getLoadWorker().stateProperty().addListener(
                 new ChangeListener<Worker.State>() {
                     @Override public void changed(ObservableValue ov, Worker.State oldState, Worker.State newState) {
-
+                        if(newState == Worker.State.SUCCEEDED && webEngine.getLocation().contains("approval")) {
+                            NodeList nodeList = webEngine.getDocument().getElementsByTagName("title");
+                            String content = nodeList.item(0).getTextContent();
+                            int equalIndex = content.indexOf("=");
+                            authCode = content.substring(equalIndex + 1);
+                            stage.close();
+                        }
                         if (newState == Worker.State.SUCCEEDED && webEngine.getLocation().contains(trigger)) {
                             //authCode = webEngine.getLocation();
                             System.out.println("url changed: " + webEngine.getLocation());
