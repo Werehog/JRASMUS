@@ -151,7 +151,26 @@ public class Main extends Application {
             }
         });
 
-        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton, GDLoginButton,gDriveUploadButton, gDriveUploadBIGButton, gDriveListFilesButton), 400, 550));
+        Button gDriveDownloadButton = new Button("Download from GoogleDrive");
+        gDriveDownloadButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                googleDriveHandler.downloaFile("Java The Complete Reference Ninth Edition.pdf");
+                //googleDriveHandler.downloaFile("Java 2 Enterprise Edition 1.4 Bible - ISBN 0764539663.pdf");
+            }
+        });
+
+        Button gDriveDeleteButton = new Button("Delete from GoogleDrive");
+        gDriveDeleteButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                //googleDriveHandler.downloaFile("Java The Complete Reference Ninth Edition.pdf");
+                googleDriveHandler.deleteFile("Java 2 Enterprise Edition 1.4 Bible - ISBN 0764539663.pdf");
+            }
+        });
+
+        stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton,
+                GDLoginButton,gDriveUploadButton, gDriveUploadBIGButton, gDriveListFilesButton, gDriveDownloadButton, gDriveDeleteButton), 400, 550));
         stage.show();
     }
 

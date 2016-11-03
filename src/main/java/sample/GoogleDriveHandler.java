@@ -1,5 +1,7 @@
 package sample;
 
+import com.sun.deploy.net.URLEncoder;
+
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -21,9 +23,10 @@ public class GoogleDriveHandler {
 
     private String accessToken;
 
-    private static final int MAX_SMALL_UPLOAD_FILE_SIZE = 5 * 1000 * 1000;
+    private static final long MAX_SMALL_FILE_SIZE = 5 * 1000 * 1000;
 
     private static final int UPLOAD_PACKET_SIZE = 20 * 320 * 1024;//1 MiB
+    private static final int DOWNLOAD_PACKET_SIZE = 1048576 * 3;
 
     public void login() {
         String url = "https://accounts.google.com/o/oauth2/v2/auth?" +
@@ -261,7 +264,204 @@ public class GoogleDriveHandler {
             }
         }
 
-        //TODO: nextlink ha 200nal tobb van
+        //TODO: nextPageToken amig van még ahonnen ez jött
+    }
+
+
+    public void downloaFile(String fileName) {
+        StoredFile storedFile = getStoredFileData(fileName);
+        if(storedFile.getSize() > MAX_SMALL_FILE_SIZE) {
+            downloadLargeFile(storedFile);
+        } else {
+            downloadFileInOnePacket(storedFile);
+        }
+    }
+
+    private StoredFile getStoredFileData(String fileName) {
+        HttpsURLConnection connection = null;
+        StoredFile storedFile = null;
+        try {
+            String query = "?q=" + URLEncoder.encode("name=\'" + fileName + "\'", "UTF-8") + "&fields=files(" + URLEncoder.encode("id,modifiedTime,name,size,webContentLink", "UTF-8") + ")";
+            System.out.println("Query: " + query);
+            URL url = new URL("https://www.googleapis.com/drive/v3/files" + query);
+            connection = (HttpsURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+
+            System.out.println("Response: " + connection.getResponseCode() + " " + connection.getResponseMessage());
+            JsonReader jsonReader = Json.createReader(connection.getInputStream());
+            JsonObject jsonObject = jsonReader.readObject();
+            JsonArray array = jsonObject.getJsonArray("files");
+            System.out.println("Found files: " + array.size());
+            for(int i=0; i<array.size(); i++) {
+                JsonObject object = array.getJsonObject(i);
+                String out = "Name: " + object.getString("name");
+                System.out.println(out);
+                System.out.println("Link: " + object.getString("webContentLink"));
+                System.out.println("ID: " + object.getString("id"));
+                //TODO:tobb talalat
+                storedFile = new StoredFile(object.getString("id"), object.getString("name"), object.getString("webContentLink"), Long.parseLong(object.getString("size")));
+            }
+
+        } catch (ProtocolException e) {
+            e.printStackTrace();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if(connection != null) {
+                connection.disconnect();
+            }
+        }
+        return storedFile;
+    }
+
+    private void downloadFileInOnePacket(StoredFile storedFile) {
+        try (FileOutputStream fileOutputStream = new FileOutputStream(new File(storedFile.getName()))) {
+            URL url = new URL(storedFile.getDownloadUrl() + "?alt=media");
+            HttpsURLConnection connection = null;
+            try {
+                connection = (HttpsURLConnection) url.openConnection();
+                connection.setDoOutput(true);
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+
+                InputStream inputStream = connection.getInputStream();
+                writeToFileFromInputStream(inputStream, fileOutputStream);
+                inputStream.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void writeToFileFromInputStream(InputStream inputStream, FileOutputStream fileOutputStream) throws IOException {
+        byte[] buf = new byte[512];
+        while (true) {
+            int len = inputStream.read(buf);
+            if (len == -1) {
+                break;
+            }
+            fileOutputStream.write(buf, 0, len);
+        }
+        fileOutputStream.flush();
+    }
+
+    private void downloadLargeFile(StoredFile storedFile) {
+        int downloadedByteNr = 0;
+        int packetNumber = Math.toIntExact( storedFile.getSize() / DOWNLOAD_PACKET_SIZE) + 1;
+        System.out.println("Packet number: " + packetNumber);
+        int fileSize = Math.toIntExact(storedFile.getSize());
+
+        String downloadUrl = storedFile.getDownloadUrl() + "?alt=media";
+
+        if(fileSize > 25000000) {
+
+            HttpsURLConnection connection = null;
+            try {
+                URL url = new URL(storedFile.getDownloadUrl() + "?alt=media");
+                connection = (HttpsURLConnection) url.openConnection();
+                connection.setDoOutput(true);
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+
+                byte[] buffer = new byte[5000];
+                int bufferSize = 0;
+
+                System.out.println("Response: " + connection.getResponseCode() + " " + connection.getResponseMessage());
+
+                InputStream inputStream = connection.getInputStream();
+                byte[] buf = new byte[512];
+                while (true) {
+                    int len = inputStream.read(buf);
+                    if (len == -1) {
+                        break;
+                    }
+                    for(int i = 0; i < len; i++) {
+                        buffer[bufferSize++] = buf[i];
+                    }
+                }
+                inputStream.read(buffer);
+                String message = new String(buffer);
+                int idIndex = message.indexOf("uc-download-link");
+                message = message.substring(idIndex);
+                int hrefIndex = message.indexOf("href=");
+                int endIndex = message.indexOf("\">");
+                String parsedUrl = (message.substring(hrefIndex + 6, endIndex)).replace("&amp;","&");
+                System.out.println("ParsedUrl: " + parsedUrl);
+                downloadUrl = "https://docs.google.com" + parsedUrl;
+                inputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+
+        try (FileOutputStream fileOutputStream = new FileOutputStream(new File(storedFile.getName()))) {
+            URL url = new URL(downloadUrl);
+            //URL url = new URL("https://drive.google.com/uc?export=download&confirm="+ URLEncoder.encode(storedFile.getId(), "UTF-8"));
+            System.out.println("Link: " + url.toString());
+            while(downloadedByteNr < fileSize) {
+                HttpsURLConnection connection = null;
+                try {
+                    connection = (HttpsURLConnection) url.openConnection();
+                    connection.setDoOutput(true);
+                    connection.setRequestMethod("GET");
+                    connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+                    int currentPacketSize;
+                    if (fileSize - downloadedByteNr > DOWNLOAD_PACKET_SIZE) {
+                        currentPacketSize = DOWNLOAD_PACKET_SIZE;
+                        String byteString = "bytes=" + downloadedByteNr + "-" + (downloadedByteNr + DOWNLOAD_PACKET_SIZE - 1);
+                        System.out.println(byteString);
+                        connection.setRequestProperty("Range", byteString);
+                    } else {
+                        currentPacketSize = fileSize - downloadedByteNr;
+                        String byteString = "bytes=" + downloadedByteNr + "-" + (fileSize - 1);
+                        System.out.println(byteString);
+                        connection.setRequestProperty("Range", byteString);
+                    }
+                    System.out.println("Response: " + connection.getResponseCode() + " " + connection.getResponseMessage());
+                    InputStream inputStream = connection.getInputStream();
+                    writeToFileFromInputStream(inputStream, fileOutputStream);
+                    inputStream.close();
+                    downloadedByteNr += currentPacketSize;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void deleteFile(String fileName) {
+        StoredFile storedFile = getStoredFileData(fileName);
+        try {
+            URL url = new URL("https://www.googleapis.com/drive/v3/files/" + storedFile.getId());
+            System.out.println("Link: " + url.toString());
+            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+            //connection.setDoOutput(true);
+            connection.setRequestMethod("DELETE");
+            connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+
+            System.out.println("Response: " + connection.getResponseCode() + " " + connection.getResponseMessage());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
