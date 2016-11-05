@@ -1,4 +1,4 @@
-package sample;
+package hu.rkoszegi.jrasmus;
 
 import com.sun.deploy.net.URLEncoder;
 
@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Created by rkoszegi on 01/11/2016.
@@ -29,8 +30,21 @@ public class GoogleDriveHandler {
     private static final int DOWNLOAD_PACKET_SIZE = 1048576 * 3;
 
     public void login() {
+        Properties properties = new Properties();
+        String clientId = null;
+        String clientSecret = null;
+        try(InputStream propertyInputStream = GoogleDriveHandler.class.getResourceAsStream("/GoogleDrive.properties")){
+            properties.load(propertyInputStream);
+            clientId = properties.getProperty("clientId");
+            clientSecret = properties.getProperty("clientSecret");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+        System.out.println("clientID = " + clientId);
+
         String url = "https://accounts.google.com/o/oauth2/v2/auth?" +
-                "client_id=839521493139-rpbb7aoacjre017qun9jb80432215bfp.apps.googleusercontent.com" +
+                "client_id=" + clientId +
                 //TODO: átírni appfolderre
                // "&scope=https://www.googleapis.com/auth/drive.appfolder" +
                 "&scope=https://www.googleapis.com/auth/drive" +
@@ -40,12 +54,12 @@ public class GoogleDriveHandler {
         WebLogin login = new WebLogin(url, "code=");
         login.showAndWait();
 
-        getToken(login.getAuthCode());
+        getToken(login.getAuthCode(), clientId, clientSecret);
 
         System.out.println("Access token: " + accessToken);
     }
 
-    private void getToken(String authCode) {
+    private void getToken(String authCode, String clientId, String clientSecret) {
         HttpsURLConnection connection = null;
         try {
             URL url = new URL("https://www.googleapis.com/oauth2/v4/token");
@@ -54,8 +68,8 @@ public class GoogleDriveHandler {
             connection.setRequestMethod("POST");
 
             String content =  "code=" + authCode +
-                    "&client_id=839521493139-rpbb7aoacjre017qun9jb80432215bfp.apps.googleusercontent.com" +
-                    "&client_secret=pTBcmdJ5AsEdgFg52OftsuMs" +
+                    "&client_id=" + clientId +
+                    "&client_secret=" + clientSecret +
                     "&redirect_uri=urn:ietf:wg:oauth:2.0:oob:auto" +
                    "&grant_type=authorization_code";
 

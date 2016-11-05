@@ -1,4 +1,4 @@
-package sample;
+package hu.rkoszegi.jrasmus;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -13,6 +13,7 @@ import java.nio.file.*;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Created by Richárd on 2016.09.13..
@@ -28,8 +29,24 @@ public class OneDriveHandler {
 
     //TODO: ujraauthentikalast megirni
     public void login() {
+
+        String clientId = null;
+        String clientSecret = null;
+        Properties properties = new Properties();
+        try (InputStream propertyInputStream = OneDriveHandler.class.getResourceAsStream("/OneDrive.properties")) {
+            properties.load(propertyInputStream);
+            clientId = properties.getProperty("clientId");
+            clientSecret = properties.getProperty("clientSecret");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
         String url = "https://login.live.com/oauth20_authorize.srf?" +
-                "client_id=000000004818EA82" +
+                "client_id=" + clientId +
                 "&scope=onedrive.readwrite%2Cwl.signin%2Cwl.offline_access" +
                 "&response_type=code" +
                 "&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf";
@@ -37,10 +54,10 @@ public class OneDriveHandler {
         WebLogin login = new WebLogin(url, "code=");
         login.showAndWait();
 
-        getToken(login.getAuthCode());
+        getToken(login.getAuthCode(), clientId, clientSecret);
     }
 
-    private void getToken(String authCode) {
+    private void getToken(String authCode, String clientId, String clientSecret) {
         HttpsURLConnection connection = null;
         try {
             URL url = new URL("https://login.live.com/oauth20_token.srf");
@@ -48,8 +65,9 @@ public class OneDriveHandler {
 
             connection.setRequestMethod("POST");
 
-            String content = "client_id=000000004818EA82" +
-                    "&redirect_uri=https://login.live.com/oauth20_desktop.srf&client_secret=ktbuoDz9sBvHlcjtPFRO4-Gh7fdI-bzH" +
+            String content = "client_id=" + clientId +
+                    "&redirect_uri=https://login.live.com/oauth20_desktop.srf" +
+                    "&client_secret=" + clientSecret +
                     "&code=" + authCode + "&grant_type=authorization_code";
 
             connection.setRequestProperty("Content-Length", Integer.toString(content.length()));

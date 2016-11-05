@@ -1,4 +1,4 @@
-package sample;
+package hu.rkoszegi.jrasmus;
 
 public class Controller {
 }

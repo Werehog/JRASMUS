@@ -1,27 +1,18 @@
-package sample;
+package hu.rkoszegi.jrasmus;
 
 import javafx.application.Application;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Group;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.web.WebEngine;
-import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.concurrent.Worker;
-import javafx.concurrent.Worker.State;
 
 import java.io.File;
+import java.util.Optional;
 
 
 public class Main extends Application {
@@ -31,15 +22,6 @@ public class Main extends Application {
     @Override
     public void start(final Stage stage) throws Exception{
        /* Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));*/
-
-
-
-        /*WebView browser = new WebView();
-        WebEngine webEngine = browser.getEngine();
-        webEngine.load(url);
-        primaryStage.setTitle("Hello World");
-        primaryStage.setScene(new Scene(browser, 400, 550));
-        primaryStage.show();*/
 
         oneDriveHandler = new OneDriveHandler();
 
@@ -69,13 +51,18 @@ public class Main extends Application {
         downloadButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                oneDriveHandler.downloadFile("Introduction to Java Programming, Comprehensive Version, 9 edition.pdf");
-                //oneDriveHandler.downloadFile("zh15_16_tavasz-info.pdf");
-                //oneDriveHandler.downloadFile("Hello.txt");
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Download finished!");
-                alert.setHeaderText("File downloaded from OneDrive!");
-                alert.showAndWait();
+                TextInputDialog textInputDialog = new TextInputDialog();
+                textInputDialog.setTitle("Download File Name");
+                textInputDialog.setContentText("Please enter the file name:");
+
+                Optional<String> result = textInputDialog.showAndWait();
+                if(result.isPresent()) {
+                    oneDriveHandler.downloadFile(result.get());
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Download finished!");
+                    alert.setHeaderText("File downloaded from OneDrive!");
+                    alert.showAndWait();
+                }
             }
         });
 
@@ -96,12 +83,19 @@ public class Main extends Application {
         deleteButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                oneDriveHandler.deleteFile("Introduction to Java Programming, Comprehensive Version, 9 edition.pdf");
+                TextInputDialog textInputDialog = new TextInputDialog();
+                textInputDialog.setTitle("Delete file from OneDrive");
+                textInputDialog.setContentText("Please enter the file name:");
 
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("File deleted!");
-                alert.setHeaderText("Deleting from OneDrive finished!");
-                alert.showAndWait();
+                Optional<String> result = textInputDialog.showAndWait();
+                if(result.isPresent()) {
+                    oneDriveHandler.deleteFile(result.get());
+
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("File deleted!");
+                    alert.setHeaderText("Deleting from OneDrive finished!");
+                    alert.showAndWait();
+                }
             }
         });
 
@@ -155,8 +149,18 @@ public class Main extends Application {
         gDriveDownloadButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                googleDriveHandler.downloaFile("Java The Complete Reference Ninth Edition.pdf");
-                //googleDriveHandler.downloaFile("Java 2 Enterprise Edition 1.4 Bible - ISBN 0764539663.pdf");
+                TextInputDialog textInputDialog = new TextInputDialog();
+                textInputDialog.setTitle("Download File Name");
+                textInputDialog.setContentText("Please enter the file name:");
+
+                Optional<String> result = textInputDialog.showAndWait();
+                if(result.isPresent()) {
+                    googleDriveHandler.downloaFile(result.get());
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Download finished!");
+                    alert.setHeaderText("File downloaded from GoogleDrive!");
+                    alert.showAndWait();
+                }
             }
         });
 
@@ -164,8 +168,18 @@ public class Main extends Application {
         gDriveDeleteButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                //googleDriveHandler.downloaFile("Java The Complete Reference Ninth Edition.pdf");
-                googleDriveHandler.deleteFile("Java 2 Enterprise Edition 1.4 Bible - ISBN 0764539663.pdf");
+                TextInputDialog textInputDialog = new TextInputDialog();
+                textInputDialog.setTitle("Delete from GoogleDrive");
+                textInputDialog.setContentText("Please enter the file name:");
+
+                Optional<String> result = textInputDialog.showAndWait();
+                if(result.isPresent()) {
+                    googleDriveHandler.deleteFile(result.get());
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Delete finished!");
+                    alert.setHeaderText("File deleted from GoogleDrive!");
+                    alert.showAndWait();
+                }
             }
         });
 

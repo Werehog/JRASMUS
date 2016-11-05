@@ -1,4 +1,4 @@
-package sample;
+package hu.rkoszegi.jrasmus;
 
 /**
  * Created by rkoszegi on 03/11/2016.
