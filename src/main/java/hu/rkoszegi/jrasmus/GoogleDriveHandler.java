@@ -20,46 +20,15 @@ import java.util.Properties;
 /**
  * Created by rkoszegi on 01/11/2016.
  */
-public class GoogleDriveHandler {
-
-    private String accessToken;
+public class GoogleDriveHandler extends BaseHandler {
 
     private static final long MAX_SMALL_FILE_SIZE = 5 * 1000 * 1000;
 
-    private static final int UPLOAD_PACKET_SIZE = 20 * 320 * 1024;//1 MiB
-    private static final int DOWNLOAD_PACKET_SIZE = 1048576 * 3;
-
-    public void login() {
-        Properties properties = new Properties();
-        String clientId = null;
-        String clientSecret = null;
-        try(InputStream propertyInputStream = GoogleDriveHandler.class.getResourceAsStream("/GoogleDrive.properties")){
-            properties.load(propertyInputStream);
-            clientId = properties.getProperty("clientId");
-            clientSecret = properties.getProperty("clientSecret");
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
-        System.out.println("clientID = " + clientId);
-
-        String url = "https://accounts.google.com/o/oauth2/v2/auth?" +
-                "client_id=" + clientId +
-                //TODO: átírni appfolderre
-               // "&scope=https://www.googleapis.com/auth/drive.appfolder" +
-                "&scope=https://www.googleapis.com/auth/drive" +
-                "&response_type=code" +
-                "&redirect_uri=urn:ietf:wg:oauth:2.0:oob:auto";
-
-        WebLogin login = new WebLogin(url, "code=");
-        login.showAndWait();
-
-        getToken(login.getAuthCode(), clientId, clientSecret);
-
-        System.out.println("Access token: " + accessToken);
+    public GoogleDriveHandler() {
+        this.propertyFileName = "/GoogleDrive.properties";
     }
 
-    private void getToken(String authCode, String clientId, String clientSecret) {
+    protected void getToken(String authCode, String clientId, String clientSecret) {
         HttpsURLConnection connection = null;
         try {
             URL url = new URL("https://www.googleapis.com/oauth2/v4/token");
@@ -476,57 +445,5 @@ public class GoogleDriveHandler {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-
-
-    private String getObjectFromJSONInput(InputStream inputStream, String name) {
-        JsonReader jSonReader = Json.createReader(inputStream);
-        JsonObject obj = jSonReader.readObject();
-        return obj.getString(name);
-    }
-
-    private void printAllResponseHeaders(HttpsURLConnection connection) throws IOException {
-        StringBuilder builder = new StringBuilder();
-        builder.append(connection.getResponseCode())
-                .append(" ")
-                .append(connection.getResponseMessage())
-                .append("\n");
-        Map<String, List<String>> map = connection.getHeaderFields();
-        for (Map.Entry<String, List<String>> entry : map.entrySet())
-        {
-            if (entry.getKey() == null)
-                continue;
-            builder.append( entry.getKey())
-                    .append(": ");
-
-            List<String> headerValues = entry.getValue();
-            Iterator<String> it = headerValues.iterator();
-            if (it.hasNext()) {
-                builder.append(it.next());
-
-                while (it.hasNext()) {
-                    builder.append(", ")
-                            .append(it.next());
-                }
-            }
-
-            builder.append("\n");
-        }
-        System.out.println("Response Headers:");
-        System.out.println(builder);
-    }
-
-    private String readResponseBody(InputStream inputStream) throws IOException {
-        BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
-        String inputLine;
-        StringBuffer response = new StringBuffer();
-
-        while ((inputLine = in.readLine()) != null) {
-            response.append(inputLine);
-        }
-        in.close();
-
-        return response.toString();
     }
 }

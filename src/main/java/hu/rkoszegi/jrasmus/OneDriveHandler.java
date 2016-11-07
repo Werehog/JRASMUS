@@ -20,44 +20,15 @@ import java.util.Properties;
  */
 
 //TODO:finally blokkok a connectionnak vagy using blokk
-public class OneDriveHandler {
+public class OneDriveHandler extends BaseHandler {
 
-    private String accessToken;
 
-    private static final int UPLOAD_PACKET_SIZE = 20 * 320 * 1024;//1 MiB
-    private static final int DOWNLOAD_PACKET_SIZE = 1048576;
-
-    //TODO: ujraauthentikalast megirni
-    public void login() {
-
-        String clientId = null;
-        String clientSecret = null;
-        Properties properties = new Properties();
-        try (InputStream propertyInputStream = OneDriveHandler.class.getResourceAsStream("/OneDrive.properties")) {
-            properties.load(propertyInputStream);
-            clientId = properties.getProperty("clientId");
-            clientSecret = properties.getProperty("clientSecret");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
-
-        String url = "https://login.live.com/oauth20_authorize.srf?" +
-                "client_id=" + clientId +
-                "&scope=onedrive.readwrite%2Cwl.signin%2Cwl.offline_access" +
-                "&response_type=code" +
-                "&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf";
-
-        WebLogin login = new WebLogin(url, "code=");
-        login.showAndWait();
-
-        getToken(login.getAuthCode(), clientId, clientSecret);
+    public OneDriveHandler() {
+        this.propertyFileName = "/OneDrive.properties";
     }
 
-    private void getToken(String authCode, String clientId, String clientSecret) {
+    //TODO: ujraauthentikalast megirni
+    protected void getToken(String authCode, String clientId, String clientSecret) {
         HttpsURLConnection connection = null;
         try {
             URL url = new URL("https://login.live.com/oauth20_token.srf");
@@ -99,12 +70,6 @@ public class OneDriveHandler {
                 connection.disconnect();
             }
         }
-    }
-
-    private String getObjectFromJSONInput(InputStream inputStream, String name) {
-        JsonReader jSonReader = Json.createReader(inputStream);
-        JsonObject obj = jSonReader.readObject();
-        return obj.getString(name);
     }
 
     public void uploadFile(File file) {
@@ -437,49 +402,5 @@ public class OneDriveHandler {
                 connection.disconnect();
             }
         }
-    }
-
-    private void printAllResponseHeaders(HttpsURLConnection connection) throws IOException {
-        StringBuilder builder = new StringBuilder();
-        builder.append(connection.getResponseCode())
-                .append(" ")
-                .append(connection.getResponseMessage())
-                .append("\n");
-        Map<String, List<String>> map = connection.getHeaderFields();
-        for (Map.Entry<String, List<String>> entry : map.entrySet())
-        {
-            if (entry.getKey() == null)
-                continue;
-            builder.append( entry.getKey())
-                    .append(": ");
-
-            List<String> headerValues = entry.getValue();
-            Iterator<String> it = headerValues.iterator();
-            if (it.hasNext()) {
-                builder.append(it.next());
-
-                while (it.hasNext()) {
-                    builder.append(", ")
-                            .append(it.next());
-                }
-            }
-
-            builder.append("\n");
-        }
-        System.out.println("Response Headers:");
-        System.out.println(builder);
-    }
-
-    private String readResponseBody(InputStream inputStream) throws IOException {
-        BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
-        String inputLine;
-        StringBuffer response = new StringBuffer();
-
-        while ((inputLine = in.readLine()) != null) {
-            response.append(inputLine);
-        }
-        in.close();
-
-        return response.toString();
     }
 }
