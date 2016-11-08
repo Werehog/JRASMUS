@@ -1,17 +1,17 @@
 package hu.rkoszegi.jrasmus;
 
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.NoSuchPaddingException;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.net.ssl.HttpsURLConnection;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.io.*;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 
 /**
  * Created by rkoszegi on 07/11/2016.
@@ -111,5 +111,68 @@ public abstract class BaseHandler {
 
         return response.toString();
     }
+
+    protected byte[] encryptToOutputStream(InputStream in) {
+        Cipher cipher = getEncryptorCipher();
+        ByteArrayOutputStream bos = null;
+        try (CipherInputStream cis = new CipherInputStream(in, cipher)) {
+            bos = new ByteArrayOutputStream();
+            byte[] b = new byte[8];
+            int i = cis.read(b);
+            while (i != -1) {
+                bos.write(b,0,i);
+                i = cis.read(b);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return  bos.toByteArray();
+    }
+
+    protected Cipher getEncryptorCipher() {
+        Cipher cipher = null;
+        try {
+            cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.ENCRYPT_MODE, KeyManager.getKey());
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        }
+        return cipher;
+    }
+
+    protected void decryptToOutputStream(CipherOutputStream cos, InputStream in) {
+        byte[] b = new byte[8];
+        try {
+            int i = in.read(b);
+            while (i != -1) {
+                cos.write(b, 0, i);
+                i = in.read(b);
+            }
+            cos.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    protected Cipher getDecryptorCipher() {
+        Cipher cipher = null;
+        try {
+            cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, KeyManager.getKey());
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        }
+        return cipher;
+    }
+
 
 }

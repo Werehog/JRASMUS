@@ -1,5 +1,9 @@
 package hu.rkoszegi.jrasmus;
 
+import com.sun.deploy.net.URLEncoder;
+
+import javax.crypto.Cipher;
+import javax.crypto.CipherOutputStream;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -92,16 +96,18 @@ public class OneDriveHandler extends BaseHandler {
             connection.setRequestMethod("PUT");
             connection.setRequestProperty("Content-Type", "text/plain");
             connection.setRequestProperty("Authorization", "bearer " + accessToken);
-            connection.setRequestProperty("Content-Length", Long.toString(file.length()));
             connection.setDoOutput(true);
-            //connection.setDoInput(true);
 
-
+            ByteArrayInputStream bais = new ByteArrayInputStream(Files.readAllBytes(file.toPath()));
+            byte[] data = encryptToOutputStream(bais);
+            connection.setFixedLengthStreamingMode(data.length);
 
             DataOutputStream wr = new DataOutputStream (
                     connection.getOutputStream());
-            wr.write(Files.readAllBytes(file.toPath()),0, Math.toIntExact(file.length()));
+            wr.write(data);
+
             wr.close();
+
 
             System.out.println(connection.getResponseCode());//ha nem hivom nem toltodik fel
 
@@ -135,7 +141,8 @@ public class OneDriveHandler extends BaseHandler {
         String uploadLink = null;
         HttpsURLConnection createUploadConnection = null;
         try {
-            String uploadFileName= replaceCharactersInFileName(file.getName());
+            //String uploadFileName= replaceCharactersInFileName(file.getName());
+            String uploadFileName = URLEncoder.encode(file.getName(), "UTF-8");
 
             URL url = new URL("https://api.onedrive.com/v1.0/drive/special/approot:/" + uploadFileName + ":/upload.createSession");
             createUploadConnection = (HttpsURLConnection) url.openConnection();
@@ -166,48 +173,68 @@ public class OneDriveHandler extends BaseHandler {
     }
 
     private void uploadFragments(File file, String uploadLink) {
-        int totalSize = Math.toIntExact(file.length());
-        int packageNumber = ( totalSize / UPLOAD_PACKET_SIZE) + 1;
+        int totalFileSize = Math.toIntExact(file.length());
+        int encryptedFileSize = (totalFileSize / 16 + 1) * 16;
+        int packageNumber = ( encryptedFileSize / UPLOAD_PACKET_SIZE) + 1;
         int uploadedBytesNr = 0;
+        int readBytesFromFile = 0;
 
-        for(int currentPacketNr = 0; currentPacketNr < packageNumber; currentPacketNr++) {
-            HttpsURLConnection connection = null;
-            try {
-                URL url = new URL(uploadLink);
-                connection = (HttpsURLConnection) url.openConnection();
-                connection.setRequestMethod("PUT");
-                connection.setRequestProperty("Authorization", "bearer " + accessToken);
-                connection.setDoOutput(true);
+        final int readBytesNumberFromFile = (UPLOAD_PACKET_SIZE / 16 - 1) * 16;
 
-                int packetSize;
-                int startByteNumber = currentPacketNr * UPLOAD_PACKET_SIZE;
-                String rangeHeader;
-                if(totalSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
-                    int endByteNumber = totalSize - 1;
-                    rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + totalSize;
-                    packetSize = totalSize - uploadedBytesNr;
-                } else {
-                    int endByteNumber = (currentPacketNr+1)* UPLOAD_PACKET_SIZE - 1;
-                    rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + totalSize;
-                    packetSize = UPLOAD_PACKET_SIZE;
-                }
-                connection.setRequestProperty("Content-Range", rangeHeader);
-                connection.setFixedLengthStreamingMode(packetSize);
+        try(FileInputStream fis = new FileInputStream(file)) {
+            for (int currentPacketNr = 0; currentPacketNr < packageNumber; currentPacketNr++) {
+                HttpsURLConnection connection = null;
+                try {
+                    URL url = new URL(uploadLink);
+                    connection = (HttpsURLConnection) url.openConnection();
+                    connection.setRequestMethod("PUT");
+                    connection.setRequestProperty("Authorization", "bearer " + accessToken);
+                    connection.setDoOutput(true);
 
-                DataOutputStream wr = new DataOutputStream(
-                        connection.getOutputStream());
-                wr.write(Files.readAllBytes(file.toPath()), uploadedBytesNr, packetSize);
-                wr.close();
 
-                uploadedBytesNr += packetSize;
+                    int packetSize;
+                    int startByteNumber = uploadedBytesNr;
+                    String rangeHeader;
+                    int readSize = 0;
+                    if (encryptedFileSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
+                        int endByteNumber = encryptedFileSize - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize = encryptedFileSize - uploadedBytesNr;
+                        readSize = totalFileSize - readBytesFromFile;
+                    } else {
+                        int endByteNumber = startByteNumber + UPLOAD_PACKET_SIZE - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize = UPLOAD_PACKET_SIZE;
+                        readSize = readBytesNumberFromFile;
+                    }
+                    connection.setRequestProperty("Content-Range", rangeHeader);
+                    connection.setFixedLengthStreamingMode(packetSize);
 
-            } catch (IOException e ) {
-                e.printStackTrace();
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
+                    byte[] buffer = new byte[readSize];
+                    fis.read(buffer, readBytesFromFile, readSize);
+                    ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
+                    byte[] data = encryptToOutputStream(bais);
+
+                    DataOutputStream wr = new DataOutputStream(
+                            connection.getOutputStream());
+                    wr.write(data);
+                    wr.close();
+
+                    readBytesFromFile += readSize;
+                    uploadedBytesNr += packetSize;
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
                 }
             }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
         //TODO: utolso uzenetet olvasni
@@ -252,7 +279,13 @@ public class OneDriveHandler extends BaseHandler {
     }
 
     private String getDownloadUrl(String fileName) {
-        String downloadLink = "https://api.onedrive.com/v1.0/drive/special/approot:/" + fileName + ":/content";
+        String encodedFileName = null;
+        try {
+            encodedFileName = URLEncoder.encode(fileName, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        String downloadLink = "https://api.onedrive.com/v1.0/drive/special/approot:/" + encodedFileName + ":/content";
         HttpsURLConnection connection = null;
         try {
             URL url = new URL(downloadLink);
@@ -274,27 +307,27 @@ public class OneDriveHandler extends BaseHandler {
     private void downloadContent(String location, String fileName) {
         int fileSize = 0;
 
-        try {
+        Cipher cipher = getDecryptorCipher();
+        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(fileName)), cipher)) {
             URL url = new URL(location);
-            FileOutputStream fileOutputStream = new FileOutputStream(new File(fileName));
-            fileSize = downloadFirstPart(url, fileSize, fileOutputStream);
+
+            //FileOutputStream fileOutputStream = new FileOutputStream(new File(fileName));
+            fileSize = downloadFirstPart(url, fileSize, cos);
 
             if(fileSize > DOWNLOAD_PACKET_SIZE) {
                 int downloadedByteNr = DOWNLOAD_PACKET_SIZE;
 
                 while(downloadedByteNr < fileSize) {
-                   downloadedByteNr = downloadNextPart(url, downloadedByteNr, fileOutputStream);
+                   downloadedByteNr = downloadNextPart(url, downloadedByteNr, cos);
                 }
             }
-
-            fileOutputStream.close();
 
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private int downloadFirstPart(URL url, int fileSize, FileOutputStream fileOutputStream) throws IOException {
+    private int downloadFirstPart(URL url, int fileSize, CipherOutputStream cipherOutputStream) throws IOException {
         HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
 
         connection.setDoOutput(true);
@@ -305,13 +338,13 @@ public class OneDriveHandler extends BaseHandler {
         fileSize = Integer.parseInt(contentRange.substring(contentRange.indexOf("/") + 1));
 
         InputStream inputStream = connection.getInputStream();
-        writeToFileFromInputStream(inputStream, fileOutputStream);
+        decryptToOutputStream(cipherOutputStream, inputStream);
         inputStream.close();
 
         return fileSize;
     }
 
-    private int downloadNextPart(URL url, int downloadedByteNr, FileOutputStream fileOutputStream) {
+    private int downloadNextPart(URL url, int downloadedByteNr, CipherOutputStream cipherOutputStream) {
         HttpsURLConnection connection = null;
         try {
             connection = (HttpsURLConnection) url.openConnection();
@@ -322,7 +355,7 @@ public class OneDriveHandler extends BaseHandler {
 
             int contentLength = connection.getContentLength();
             InputStream inputStream = connection.getInputStream();
-            writeToFileFromInputStream(inputStream, fileOutputStream);
+            decryptToOutputStream(cipherOutputStream, inputStream);
             inputStream.close();
 
              return downloadedByteNr + contentLength;
@@ -333,18 +366,7 @@ public class OneDriveHandler extends BaseHandler {
 
         return downloadedByteNr;
     }
-
-    private void writeToFileFromInputStream(InputStream inputStream, FileOutputStream fileOutputStream) throws IOException {
-        byte[] buf = new byte[512];
-        while (true) {
-            int len = inputStream.read(buf);
-            if (len == -1) {
-                break;
-            }
-            fileOutputStream.write(buf, 0, len);
-        }
-        fileOutputStream.flush();
-    }
+    
 
     public void listFolder() {
         HttpsURLConnection connection = null;

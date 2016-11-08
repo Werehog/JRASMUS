@@ -2,6 +2,8 @@ package hu.rkoszegi.jrasmus;
 
 import com.sun.deploy.net.URLEncoder;
 
+import javax.crypto.Cipher;
+import javax.crypto.CipherOutputStream;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -96,12 +98,15 @@ public class GoogleDriveHandler extends BaseHandler {
 
             String lastBoundary = "\n--" + boundary + "--";
 
-            connection.setRequestProperty("Content-Length", Long.toString(file.length() + builder.length() + lastBoundary.length()));
+            byte[] data = encryptToOutputStream(new FileInputStream(file));
+
+            connection.setRequestProperty("Content-Length", Long.toString(data.length + builder.length() + lastBoundary.length()));
 
             DataOutputStream wr = new DataOutputStream (
                     connection.getOutputStream());
             wr.writeBytes(builder.toString());
-            wr.write(Files.readAllBytes(file.toPath()),0, Math.toIntExact(file.length()));
+            //wr.write(Files.readAllBytes(file.toPath()),0, Math.toIntExact(file.length()));
+            wr.write(data);
             wr.writeBytes(lastBoundary);
             wr.close();
 
@@ -301,23 +306,17 @@ public class GoogleDriveHandler extends BaseHandler {
     }
 
     private void downloadFileInOnePacket(StoredFile storedFile) {
-        try (FileOutputStream fileOutputStream = new FileOutputStream(new File(storedFile.getName()))) {
+        Cipher cipher = getDecryptorCipher();
+        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(storedFile.getName())), cipher)) {
             URL url = new URL(storedFile.getDownloadUrl() + "?alt=media");
-            HttpsURLConnection connection = null;
-            try {
-                connection = (HttpsURLConnection) url.openConnection();
-                connection.setDoOutput(true);
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+            connection.setDoInput(true);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Authorization", "Bearer " + accessToken);
 
-                InputStream inputStream = connection.getInputStream();
-                writeToFileFromInputStream(inputStream, fileOutputStream);
-                inputStream.close();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
+            InputStream inputStream = connection.getInputStream();
+            decryptToOutputStream(cos, inputStream);
+            inputStream.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
