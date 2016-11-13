@@ -1,4 +1,4 @@
-package hu.rkoszegi.jrasmus;
+package hu.rkoszegi.jrasmus.handler;
 
 import com.sun.deploy.net.URLEncoder;
 
@@ -9,15 +9,12 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.net.ssl.HttpsURLConnection;
+import javax.persistence.Entity;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.file.*;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 
 /**
  * Created by Richárd on 2016.09.13..
@@ -77,7 +74,7 @@ public class OneDriveHandler extends BaseHandler {
     }
 
     public void uploadFile(File file) {
-        if(file.length() < 100000000) {
+        if(file.length() < 10000000) {
             uploadSmallFile(file);
         } else {
             uploadLargeFile(file);
@@ -172,7 +169,7 @@ public class OneDriveHandler extends BaseHandler {
         return uploadLink;
     }
 
-    private void uploadFragments(File file, String uploadLink) {
+    /*private void uploadFragments(File file, String uploadLink) {
         int totalFileSize = Math.toIntExact(file.length());
         int encryptedFileSize = (totalFileSize / 16 + 1) * 16;
         int packageNumber = ( encryptedFileSize / UPLOAD_PACKET_SIZE) + 1;
@@ -238,7 +235,7 @@ public class OneDriveHandler extends BaseHandler {
         }
 
         //TODO: utolso uzenetet olvasni
-    }
+    }*/
 
     private void cancelUpload(String uploadLink) {
         //TODO: ellenorizni, kell-e

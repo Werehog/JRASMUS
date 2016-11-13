@@ -1,6 +1,7 @@
-package hu.rkoszegi.jrasmus;
+package hu.rkoszegi.jrasmus.handler;
 
 import com.sun.deploy.net.URLEncoder;
+import hu.rkoszegi.jrasmus.model.StoredFile;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;
@@ -9,19 +10,18 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.net.ssl.HttpsURLConnection;
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Entity;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.file.Files;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 
 /**
  * Created by rkoszegi on 01/11/2016.
  */
+
 public class GoogleDriveHandler extends BaseHandler {
 
     private static final long MAX_SMALL_FILE_SIZE = 5 * 1000 * 1000;
@@ -155,6 +155,7 @@ public class GoogleDriveHandler extends BaseHandler {
             wr.close();
 
             uploadLink = createUploadConnection.getHeaderField("Location");
+            printAllResponseHeaders(createUploadConnection);
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -170,9 +171,9 @@ public class GoogleDriveHandler extends BaseHandler {
         return uploadLink;
     }
 
-    private void uploadFragments(File file, String uploadLink) {
+    protected void uploadFragments(File file, String uploadLink) {
         int totalSize = Math.toIntExact(file.length());
-        int packageNumber = (totalSize / UPLOAD_PACKET_SIZE) + 1;
+        int packageNumber = Math.toIntExact(totalSize / UPLOAD_PACKET_SIZE) + 1;
         int uploadedBytesNr = 0;
         System.out.println("Package number: " + packageNumber);
         for (int currentPacketNr = 0; currentPacketNr < packageNumber; currentPacketNr++) {
@@ -185,16 +186,16 @@ public class GoogleDriveHandler extends BaseHandler {
                 connection.setDoOutput(true);
 
                 int packetSize;
-                int startByteNumber = currentPacketNr * UPLOAD_PACKET_SIZE;
+                int startByteNumber = currentPacketNr * Math.toIntExact(UPLOAD_PACKET_SIZE);
                 String rangeHeader;
                 if (totalSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
                     int endByteNumber = totalSize - 1;
                     rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + totalSize;
                     packetSize = totalSize - uploadedBytesNr;
                 } else {
-                    int endByteNumber = (currentPacketNr + 1) * UPLOAD_PACKET_SIZE - 1;
+                    int endByteNumber = (currentPacketNr + 1) * Math.toIntExact(UPLOAD_PACKET_SIZE) - 1;
                     rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + totalSize;
-                    packetSize = UPLOAD_PACKET_SIZE;
+                    packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
                 }
                 connection.setRequestProperty("Content-Range", rangeHeader);
                 connection.setFixedLengthStreamingMode(packetSize);
@@ -211,9 +212,9 @@ public class GoogleDriveHandler extends BaseHandler {
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-                if (connection != null) {
+               /* if (connection != null) {
                     connection.disconnect();
-                }
+                }*/
             }
         }
     }
@@ -385,13 +386,14 @@ public class GoogleDriveHandler extends BaseHandler {
             }
         }
 
+        Cipher cipher = getDecryptorCipher();
 
-
-        try (FileOutputStream fileOutputStream = new FileOutputStream(new File(storedFile.getName()))) {
+        try (CipherOutputStream cipherOutputStream = new CipherOutputStream(new FileOutputStream(new File(storedFile.getName())), cipher)) {
             URL url = new URL(downloadUrl);
             //URL url = new URL("https://drive.google.com/uc?export=download&confirm="+ URLEncoder.encode(storedFile.getId(), "UTF-8"));
             System.out.println("Link: " + url.toString());
-            while(downloadedByteNr < fileSize) {
+            int encryptedFileSize = (fileSize / 16 + 1) * 16;
+            while(downloadedByteNr < encryptedFileSize) {
                 HttpsURLConnection connection = null;
                 try {
                     connection = (HttpsURLConnection) url.openConnection();
@@ -399,20 +401,21 @@ public class GoogleDriveHandler extends BaseHandler {
                     connection.setRequestMethod("GET");
                     connection.setRequestProperty("Authorization", "Bearer " + accessToken);
                     int currentPacketSize;
-                    if (fileSize - downloadedByteNr > DOWNLOAD_PACKET_SIZE) {
+                    if (encryptedFileSize - downloadedByteNr > DOWNLOAD_PACKET_SIZE) {
                         currentPacketSize = DOWNLOAD_PACKET_SIZE;
                         String byteString = "bytes=" + downloadedByteNr + "-" + (downloadedByteNr + DOWNLOAD_PACKET_SIZE - 1);
                         System.out.println(byteString);
                         connection.setRequestProperty("Range", byteString);
                     } else {
-                        currentPacketSize = fileSize - downloadedByteNr;
-                        String byteString = "bytes=" + downloadedByteNr + "-" + (fileSize - 1);
+                        currentPacketSize = encryptedFileSize - downloadedByteNr;
+                        String byteString = "bytes=" + downloadedByteNr + "-" + (encryptedFileSize - 1);
                         System.out.println(byteString);
                         connection.setRequestProperty("Range", byteString);
                     }
                     System.out.println("Response: " + connection.getResponseCode() + " " + connection.getResponseMessage());
                     InputStream inputStream = connection.getInputStream();
-                    writeToFileFromInputStream(inputStream, fileOutputStream);
+                    //writeToFileFromInputStream(inputStream, fileOutputStream);
+                    decryptToOutputStream(cipherOutputStream,inputStream);
                     inputStream.close();
                     downloadedByteNr += currentPacketSize;
                 } catch (IOException e) {

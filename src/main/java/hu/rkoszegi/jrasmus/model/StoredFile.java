@@ -1,19 +1,30 @@
-package hu.rkoszegi.jrasmus;
+package hu.rkoszegi.jrasmus.model;
+
+import javax.persistence.*;
 
 /**
  * Created by rkoszegi on 03/11/2016.
  */
+@Entity
+@Table(name = "StoredFile")
 public class StoredFile {
     private String name;
     private String downloadUrl;
     private long size;
-    private String id;
+    private String driveId;
 
-    public StoredFile(String id, String name, String downloadUrl, long size) {
-        this.id = id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private long id;
+
+    public StoredFile(String driveId, String name, String downloadUrl, long size) {
+        this.driveId = driveId;
         this.name = name;
         this.downloadUrl = downloadUrl;
         this.size = size;
+    }
+
+    public StoredFile() {
     }
 
     public long getSize() {
@@ -42,11 +53,19 @@ public class StoredFile {
         this.name = name;
     }
 
-    public String getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(long id) {
         this.id = id;
+    }
+
+    public String getDriveId() {
+        return driveId;
+    }
+
+    public void setDriveId(String driveId) {
+        this.driveId = driveId;
     }
 }

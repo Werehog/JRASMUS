@@ -1,4 +1,7 @@
-package hu.rkoszegi.jrasmus;
+package hu.rkoszegi.jrasmus.handler;
+
+import hu.rkoszegi.jrasmus.crypto.KeyManager;
+import hu.rkoszegi.jrasmus.WebLogin;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -8,7 +11,10 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.net.ssl.HttpsURLConnection;
+import javax.persistence.DiscriminatorColumn;
+import javax.persistence.Entity;
 import java.io.*;
+import java.net.URL;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -16,14 +22,16 @@ import java.util.*;
 /**
  * Created by rkoszegi on 07/11/2016.
  */
+
 public abstract class BaseHandler {
 
     protected String accessToken;
 
-    protected static final int UPLOAD_PACKET_SIZE = 20 * 320 * 1024;//1 MiB
+    protected static final long UPLOAD_PACKET_SIZE = 7* 320 * 1024;
     protected static final int DOWNLOAD_PACKET_SIZE = 1048576;
 
     protected String propertyFileName;
+    protected String bearer;
 
     public void login() {
         Properties properties = new Properties();
@@ -39,6 +47,7 @@ public abstract class BaseHandler {
             loginUrl = properties.getProperty("loginUrl");
             redirectUri = properties.getProperty("redirectUri");
             scope = properties.getProperty("scope");
+            bearer = properties.getProperty("bearer");
         } catch (IOException e) {
             e.printStackTrace();
             return;
@@ -172,6 +181,110 @@ public abstract class BaseHandler {
             e.printStackTrace();
         }
         return cipher;
+    }
+
+    protected void uploadFragments(File file, String uploadLink) {
+        long totalFileSize = file.length();
+        long encryptedFileSize = (totalFileSize / 16 + 1) * 16;
+        long packageNumber = ( encryptedFileSize / UPLOAD_PACKET_SIZE) + 1;
+        long uploadedBytesNr = 0;
+        long readBytesFromFile = 0;
+
+        System.out.println("File Size: " + totalFileSize);
+        System.out.println("Encrypted Size: " + encryptedFileSize);
+
+        final long readBytesNumberFromFile = (UPLOAD_PACKET_SIZE / 16 - 1) * 16;
+
+        int currentPacketNr = 1;
+        try(FileInputStream fis = new FileInputStream(file)) {
+            int backoffIndex = 0;
+            Random rand = null;
+            while (uploadedBytesNr < encryptedFileSize) {
+                HttpsURLConnection connection = null;
+                System.out.println((currentPacketNr++) + "/" + packageNumber + ". package");
+                try {
+                    URL url = new URL(uploadLink);
+                    connection = (HttpsURLConnection) url.openConnection();
+                    connection.setRequestMethod("PUT");
+                    connection.setRequestProperty("Authorization", bearer + " " + accessToken);
+                    connection.setRequestProperty("Content-Type", "text/plain");
+                    connection.setDoOutput(true);
+
+
+                    int packetSize;
+                    long startByteNumber = uploadedBytesNr;
+                    String rangeHeader;
+                    int readSize = 0;
+                    if (encryptedFileSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
+                        long endByteNumber = encryptedFileSize - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize = Math.toIntExact(encryptedFileSize - uploadedBytesNr);
+                        readSize = Math.toIntExact(totalFileSize - readBytesFromFile);
+                    } else {
+                        long endByteNumber = startByteNumber + UPLOAD_PACKET_SIZE - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
+                        readSize = Math.toIntExact(readBytesNumberFromFile);
+                    }
+                    connection.setRequestProperty("Content-Range", rangeHeader);
+                    System.out.println("Content-Range: " + rangeHeader);
+
+                    System.out.println("Packet size, read size: " + packetSize + ", " + readSize);
+                    byte[] buffer = new byte[readSize];
+                    //fis.read(buffer, readBytesFromFile, readSize);
+                    fis.read(buffer);
+                    ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
+                    byte[] data = encryptToOutputStream(bais);
+                    connection.setFixedLengthStreamingMode(data.length);
+                    System.out.println("Data size: " + data.length);
+                    DataOutputStream wr = new DataOutputStream(
+                            connection.getOutputStream());
+                    wr.write(data);
+                    wr.flush();
+                    wr.close();
+
+                    System.out.println("Read bytes from file: " + readBytesFromFile + "/" + totalFileSize);
+                    System.out.println("Uploaded bytes nr: " + uploadedBytesNr + "/" + encryptedFileSize);
+
+                    //printAllResponseHeaders(connection);
+                    int responseCode = connection.getResponseCode();
+                    System.out.println("Response code: "+ responseCode + " " + connection.getResponseMessage());
+                    if(responseCode >= 500) {
+                        System.out.println("Server error");
+                        if(backoffIndex==4) {
+                            System.out.println("Nagyon server error");
+                            return;
+                        }
+                        if(rand == null) {
+                            rand = new Random();
+                        }
+                        long sleepTime = ((long) Math.pow(2, backoffIndex)) * 1000 + (rand.nextLong() % 1000);
+                        System.out.println("Sleeping for: "+ sleepTime);
+                        try {
+                            Thread.sleep(sleepTime);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
+                    } else {
+                        readBytesFromFile += readSize;
+                        uploadedBytesNr += packetSize;
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    /*if (connection != null) {
+                        connection.disconnect();
+                    }*/
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //TODO: utolso uzenetet olvasni
     }
 
 
