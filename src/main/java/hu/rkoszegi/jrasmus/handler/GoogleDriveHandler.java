@@ -1,6 +1,8 @@
 package hu.rkoszegi.jrasmus.handler;
 
 import com.sun.deploy.net.URLEncoder;
+import com.sun.org.apache.xpath.internal.SourceTree;
+import hu.rkoszegi.jrasmus.model.GDriveFile;
 import hu.rkoszegi.jrasmus.model.StoredFile;
 
 import javax.crypto.Cipher;
@@ -21,7 +23,8 @@ import java.nio.file.Files;
 /**
  * Created by rkoszegi on 01/11/2016.
  */
-
+@Entity
+@DiscriminatorValue("GOOGLEDRIVE")
 public class GoogleDriveHandler extends BaseHandler {
 
     private static final long MAX_SMALL_FILE_SIZE = 5 * 1000 * 1000;
@@ -258,17 +261,17 @@ public class GoogleDriveHandler extends BaseHandler {
 
 
     public void downloaFile(String fileName) {
-        StoredFile storedFile = getStoredFileData(fileName);
-        if(storedFile.getSize() > MAX_SMALL_FILE_SIZE) {
-            downloadLargeFile(storedFile);
+        GDriveFile gDriveFile = getStoredFileData(fileName);
+        if(gDriveFile.getSize() > MAX_SMALL_FILE_SIZE) {
+            downloadLargeFile(gDriveFile);
         } else {
-            downloadFileInOnePacket(storedFile);
+            downloadFileInOnePacket(gDriveFile);
         }
     }
 
-    private StoredFile getStoredFileData(String fileName) {
+    private GDriveFile getStoredFileData(String fileName) {
         HttpsURLConnection connection = null;
-        StoredFile storedFile = null;
+        GDriveFile gDriveFile = null;
         try {
             String query = "?q=" + URLEncoder.encode("name=\'" + fileName + "\'", "UTF-8") + "&fields=files(" + URLEncoder.encode("id,modifiedTime,name,size,webContentLink", "UTF-8") + ")";
             System.out.println("Query: " + query);
@@ -289,7 +292,7 @@ public class GoogleDriveHandler extends BaseHandler {
                 System.out.println("Link: " + object.getString("webContentLink"));
                 System.out.println("ID: " + object.getString("id"));
                 //TODO:tobb talalat
-                storedFile = new StoredFile(object.getString("id"), object.getString("name"), object.getString("webContentLink"), Long.parseLong(object.getString("size")));
+                gDriveFile = new GDriveFile(object.getString("id"), object.getString("name"), object.getString("webContentLink"), Long.parseLong(object.getString("size")));
             }
 
         } catch (ProtocolException e) {
@@ -303,13 +306,13 @@ public class GoogleDriveHandler extends BaseHandler {
                 connection.disconnect();
             }
         }
-        return storedFile;
+        return gDriveFile;
     }
 
-    private void downloadFileInOnePacket(StoredFile storedFile) {
+    private void downloadFileInOnePacket(GDriveFile gDriveFile) {
         Cipher cipher = getDecryptorCipher();
-        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(storedFile.getName())), cipher)) {
-            URL url = new URL(storedFile.getDownloadUrl() + "?alt=media");
+        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(gDriveFile.getName())), cipher)) {
+            URL url = new URL(gDriveFile.getDownloadUrl() + "?alt=media");
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
             connection.setDoInput(true);
             connection.setRequestMethod("GET");
@@ -337,19 +340,19 @@ public class GoogleDriveHandler extends BaseHandler {
         fileOutputStream.flush();
     }
 
-    private void downloadLargeFile(StoredFile storedFile) {
+    private void downloadLargeFile(GDriveFile gDriveFile) {
         int downloadedByteNr = 0;
-        int packetNumber = Math.toIntExact( storedFile.getSize() / DOWNLOAD_PACKET_SIZE) + 1;
+        int packetNumber = Math.toIntExact( gDriveFile.getSize() / DOWNLOAD_PACKET_SIZE) + 1;
         System.out.println("Packet number: " + packetNumber);
-        int fileSize = Math.toIntExact(storedFile.getSize());
+        int fileSize = Math.toIntExact(gDriveFile.getSize());
 
-        String downloadUrl = storedFile.getDownloadUrl() + "?alt=media";
+        String downloadUrl = gDriveFile.getDownloadUrl() + "?alt=media";
 
         if(fileSize > 25000000) {
 
             HttpsURLConnection connection = null;
             try {
-                URL url = new URL(storedFile.getDownloadUrl() + "?alt=media");
+                URL url = new URL(gDriveFile.getDownloadUrl() + "?alt=media");
                 connection = (HttpsURLConnection) url.openConnection();
                 connection.setDoOutput(true);
                 connection.setRequestMethod("GET");
@@ -388,7 +391,7 @@ public class GoogleDriveHandler extends BaseHandler {
 
         Cipher cipher = getDecryptorCipher();
 
-        try (CipherOutputStream cipherOutputStream = new CipherOutputStream(new FileOutputStream(new File(storedFile.getName())), cipher)) {
+        try (CipherOutputStream cipherOutputStream = new CipherOutputStream(new FileOutputStream(new File(gDriveFile.getName())), cipher)) {
             URL url = new URL(downloadUrl);
             //URL url = new URL("https://drive.google.com/uc?export=download&confirm="+ URLEncoder.encode(storedFile.getId(), "UTF-8"));
             System.out.println("Link: " + url.toString());
@@ -432,9 +435,9 @@ public class GoogleDriveHandler extends BaseHandler {
 
 
     public void deleteFile(String fileName) {
-        StoredFile storedFile = getStoredFileData(fileName);
+        GDriveFile gDriveFile = getStoredFileData(fileName);
         try {
-            URL url = new URL("https://www.googleapis.com/drive/v3/files/" + storedFile.getId());
+            URL url = new URL("https://www.googleapis.com/drive/v3/files/" + gDriveFile.getId());
             System.out.println("Link: " + url.toString());
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
             //connection.setDoOutput(true);
@@ -442,6 +445,36 @@ public class GoogleDriveHandler extends BaseHandler {
             connection.setRequestProperty("Authorization", "Bearer " + accessToken);
 
             System.out.println("Response: " + connection.getResponseCode() + " " + connection.getResponseMessage());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void getDriveMetaData() {
+        try {
+            URL url = new URL("https://www.googleapis.com/drive/v2/about");
+            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+            connection.setDoInput(true);
+
+            JsonReader jSonReader = Json.createReader(connection.getInputStream());
+            JsonObject rootObject = jSonReader.readObject();
+
+            totalSize = Long.parseLong(rootObject.getString("quotaBytesTotal"));
+            JsonArray array = rootObject.getJsonArray("quotaBytesByService");
+            long usedSize = 0;
+            for(int i = 0; i< array.size(); i++) {
+                usedSize += Long.parseLong(array.getJsonObject(i).getString("bytesUsed"));
+            }
+
+            freeSize = totalSize - usedSize;
+
+            System.out.println("Total: " + totalSize);
+            System.out.println("Free:  " + freeSize);
+
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {

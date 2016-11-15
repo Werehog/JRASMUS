@@ -2,6 +2,7 @@ package hu.rkoszegi.jrasmus.handler;
 
 import hu.rkoszegi.jrasmus.crypto.KeyManager;
 import hu.rkoszegi.jrasmus.WebLogin;
+import hu.rkoszegi.jrasmus.model.AbstractEntity;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -11,8 +12,7 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.net.ssl.HttpsURLConnection;
-import javax.persistence.DiscriminatorColumn;
-import javax.persistence.Entity;
+import javax.persistence.*;
 import java.io.*;
 import java.net.URL;
 import java.security.InvalidKeyException;
@@ -22,16 +22,29 @@ import java.util.*;
 /**
  * Created by rkoszegi on 07/11/2016.
  */
-
-public abstract class BaseHandler {
+@Entity
+@DiscriminatorColumn(name="HANDLER_TYPE")
+@Table(name="HANDLER")
+public abstract class BaseHandler extends AbstractEntity {
 
     protected String accessToken;
 
+    protected long totalSize;
+    protected long freeSize;
+
+    @Transient
     protected static final long UPLOAD_PACKET_SIZE = 7* 320 * 1024;
+    @Transient
     protected static final int DOWNLOAD_PACKET_SIZE = 1048576;
 
+    @Transient
     protected String propertyFileName;
+    @Transient
     protected String bearer;
+
+    public BaseHandler() {}
+
+    public abstract void getDriveMetaData();
 
     public void login() {
         Properties properties = new Properties();
@@ -40,7 +53,7 @@ public abstract class BaseHandler {
         String loginUrl = null;
         String redirectUri = null;
         String scope = null;
-        try(InputStream propertyInputStream = GoogleDriveHandler.class.getResourceAsStream(propertyFileName)){
+        try(InputStream propertyInputStream = BaseHandler.class.getResourceAsStream( propertyFileName)){
             properties.load(propertyInputStream);
             clientId = properties.getProperty("clientId");
             clientSecret = properties.getProperty("clientSecret");
@@ -67,7 +80,8 @@ public abstract class BaseHandler {
         getToken(login.getAuthCode(), clientId, clientSecret);
     }
 
-    protected abstract void getToken(String authCode, String clientId, String clientSecret);
+    //TODO:abstract
+    protected void getToken(String authCode, String clientId, String clientSecret) {}
 
     protected String getObjectFromJSONInput(InputStream inputStream, String name) {
         JsonReader jSonReader = Json.createReader(inputStream);
@@ -288,4 +302,11 @@ public abstract class BaseHandler {
     }
 
 
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
+    }
 }

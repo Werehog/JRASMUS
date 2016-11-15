@@ -1,17 +1,25 @@
 package hu.rkoszegi.jrasmus;
 
+import hu.rkoszegi.jrasmus.dao.StoredFileDAO;
+import hu.rkoszegi.jrasmus.handler.GoogleDriveHandler;
+import hu.rkoszegi.jrasmus.handler.OneDriveHandler;
+import hu.rkoszegi.jrasmus.model.StoredFile;
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import javax.persistence.*;
 import java.io.File;
+import java.util.List;
 import java.util.Optional;
 
 
@@ -23,7 +31,31 @@ public class Main extends Application {
     public void start(final Stage stage) throws Exception{
        /* Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));*/
 
-        oneDriveHandler = new OneDriveHandler();
+       DatabaseManager.initDB();
+
+        try {
+
+            // Create a loader object and load View and Controller
+            final FXMLLoader loader = new FXMLLoader(getClass().getClassLoader().getResource("sample.fxml"));
+            final VBox viewRoot = (VBox) loader.load();
+
+            // Get controller object and initialize it
+            final View controller = loader.getController();
+            controller.initData(stage);
+
+            // Set scene (and the title of the window) and display it
+            Scene scene = new Scene(viewRoot);
+            stage.setScene(scene);
+            stage.setTitle("JRASMUS");
+            stage.show();
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+        }
+
+        /*oneDriveHandler = new OneDriveHandler();
 
         Button loginButton = new Button("Login to OneDrive");
         loginButton.setOnAction(new EventHandler<ActionEvent>() {
@@ -183,10 +215,70 @@ public class Main extends Application {
             }
         });
 
+        Button criptoTestButton = new Button("criptoTestButton");
+        criptoTestButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                TextInputDialog textInputDialog = new TextInputDialog();
+                textInputDialog.setTitle("Password");
+                textInputDialog.setContentText("Please enter a password:");
+
+                Optional<String> result = textInputDialog.showAndWait();
+                if(result.isPresent()) {
+                    new CryptoTest().TestIt(result.get().toCharArray());
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Test finished!");
+                    alert.setHeaderText("Such test much wow!");
+                    alert.showAndWait();
+                }
+            }
+        });
+
+*//*
+        DatabaseManager.initDB();
+*//*
+
+        Button persistenceTestButton = new Button("criptoTestButton");
+        persistenceTestButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                //StoredFileDAO dao = new StoredFileDAO();
+                StoredFile file = new StoredFile();
+                file.setName("TestFile");
+               EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("JrasmusPersistenceUnit");
+                 EntityManager entityManager = entityManagerFactory.createEntityManager();
+                EntityTransaction tx = entityManager.getTransaction();
+                tx.begin();
+                entityManager.persist(file);
+                tx.commit();
+
+                Query q = entityManager.createQuery("SELECT f FROM StoredFile f");
+
+                List<StoredFile> result = q.getResultList();
+
+                System.out.println("Res meret: " + result.size());
+
+                for (Object f: result) {
+                    System.out.println(((StoredFile)f).getName());
+                }
+                System.out.printf("Such working code");
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Test finished!");
+                alert.setHeaderText("Such test much wow!");
+                alert.showAndWait();
+            }
+        });
+
         stage.setScene(new Scene(new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton,
-                GDLoginButton,gDriveUploadButton, gDriveUploadBIGButton, gDriveListFilesButton, gDriveDownloadButton, gDriveDeleteButton), 400, 550));
-        stage.show();
+                GDLoginButton,gDriveUploadButton, gDriveUploadBIGButton, gDriveListFilesButton, gDriveDownloadButton, gDriveDeleteButton, criptoTestButton, persistenceTestButton), 400, 550));
+        stage.show();*/
     }
+
+    @Override
+    public void stop() {
+        DatabaseManager.closeDB();
+    }
+
 
 
     public static void main(String[] args) {

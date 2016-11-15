@@ -1,6 +1,7 @@
 package hu.rkoszegi.jrasmus.handler;
 
 import com.sun.deploy.net.URLEncoder;
+import com.sun.deploy.util.SyncAccess;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;
@@ -9,6 +10,7 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.net.ssl.HttpsURLConnection;
+import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 import java.io.*;
 import java.net.MalformedURLException;
@@ -20,7 +22,8 @@ import java.nio.file.*;
  * Created by Richárd on 2016.09.13..
  */
 
-//TODO:finally blokkok a connectionnak vagy using blokk
+@Entity
+@DiscriminatorValue("ONEDRIVE")
 public class OneDriveHandler extends BaseHandler {
 
 
@@ -410,6 +413,34 @@ public class OneDriveHandler extends BaseHandler {
 
             connection.getResponseCode();//ha nincs response code, akkor nem hajtodik vegre
 
+        } catch (ProtocolException e) {
+            e.printStackTrace();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if(connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    public void getDriveMetaData() {
+        HttpsURLConnection connection = null;
+        try {
+            URL url = new URL("https://api.onedrive.com/v1.0/drive");
+            connection = (HttpsURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Authorization", "bearer " + accessToken);
+            connection.setDoInput(true);
+
+            JsonReader jSonReader = Json.createReader(connection.getInputStream());
+            JsonObject rootObject = jSonReader.readObject();
+            JsonObject qoutaObject = rootObject.getJsonObject("quota");
+
+            totalSize = qoutaObject.getJsonNumber("total").longValueExact();
+            freeSize = qoutaObject.getJsonNumber("remaining").longValueExact();
         } catch (ProtocolException e) {
             e.printStackTrace();
         } catch (MalformedURLException e) {

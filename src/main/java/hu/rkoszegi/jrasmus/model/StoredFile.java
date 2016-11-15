@@ -1,56 +1,61 @@
 package hu.rkoszegi.jrasmus.model;
 
+import hu.rkoszegi.jrasmus.handler.BaseHandler;
+
 import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Created by rkoszegi on 03/11/2016.
  */
 @Entity
-@Table(name = "StoredFile")
+@Table(name = "STOREDFILE")
 public class StoredFile {
-    private String name;
-    private String downloadUrl;
-    private long size;
-    private String driveId;
+    private String path;
+    private Date lastModified;
+    private String uploadName;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "HANDLER_ID")
+    private BaseHandler handler;
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
-    public StoredFile(String driveId, String name, String downloadUrl, long size) {
-        this.driveId = driveId;
-        this.name = name;
-        this.downloadUrl = downloadUrl;
-        this.size = size;
-    }
-
     public StoredFile() {
     }
 
-    public long getSize() {
-        return size;
+    public String getPath() {
+        return path;
     }
 
-    public void setSize(long size) {
-        this.size = size;
+    public void setPath(String path) {
+        this.path = path;
     }
 
-    public String getDownloadUrl() {
-
-        return downloadUrl;
+    public Date getLastModified() {
+        return lastModified;
     }
 
-    public void setDownloadUrl(String downloadUrl) {
-        this.downloadUrl = downloadUrl;
+    public void setLastModified(Date lastModified) {
+        this.lastModified = lastModified;
     }
 
-    public String getName() {
-
-        return name;
+    public String getUploadName() {
+        return uploadName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setUploadName(String uploadName) {
+        this.uploadName = uploadName;
+    }
+
+    public BaseHandler getHandler() {
+        return handler;
+    }
+
+    public void setHandler(BaseHandler handler) {
+        this.handler = handler;
     }
 
     public long getId() {
@@ -59,13 +64,5 @@ public class StoredFile {
 
     public void setId(long id) {
         this.id = id;
-    }
-
-    public String getDriveId() {
-        return driveId;
-    }
-
-    public void setDriveId(String driveId) {
-        this.driveId = driveId;
     }
 }
