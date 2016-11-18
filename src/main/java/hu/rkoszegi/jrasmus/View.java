@@ -9,7 +9,6 @@ import hu.rkoszegi.jrasmus.model.StoredFile;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableArray;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -17,9 +16,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.MapValueFactory;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
@@ -85,16 +82,29 @@ public class View {
     private ObservableList<StoredFile> storedFileList =  FXCollections.observableArrayList();
 
     @FXML
-    private TableView<StoredFile> personTable;
+    private TableView<StoredFile> filesTable;
     @FXML
     private TableColumn<StoredFile, String> nameColumn;
     @FXML
     private TableColumn<StoredFile, String> pathColumn;
+    /*@FXML
+    private TableColumn<StoredFile, Long> sizeColumn;*/
     @FXML
-    private TableColumn<StoredFile, Long> sizeColumn;
-    @FXML
-    private TableColumn<StoredFile, Date> lastUploadedColumn;
+    private TableColumn<StoredFile, String> lastUploadedColumn;
     //</Files Tab>
+
+    //<Providers Tab>
+    private ObservableList<BaseHandler> handlerList =  FXCollections.observableArrayList();
+
+    @FXML
+    private TableView<BaseHandler> handlersTable;
+    @FXML
+    private TableColumn<BaseHandler, String> handlerIdColumn;
+    @FXML
+    private TableColumn<BaseHandler, String> handlerFreesSizeColumn;
+    @FXML
+    private TableColumn<BaseHandler, String> handlerTotalSizeColumn;
+    //</Providers Tab>
 
     /**
      * View initialization, it will be called after view was prepared
@@ -102,28 +112,32 @@ public class View {
     @FXML
     public void initialize() {
         //Files Tab
-        personTable.setItems(storedFileList);
+        filesTable.setItems(storedFileList);
 
-        /*nameColumn.setCellValueFactory(cellData -> cellData.getValue().getUploadName());
-        pathColumn.setCellValueFactory(cellData -> cellData.getValue().lastNameProperty());
-        sizeColumn.setCellValueFactory(cellData -> cellData.getValue().firstNameProperty());
-        lastUploadedColumn.setCellValueFactory(cellData -> cellData.getValue().lastNameProperty());*/
+        nameColumn.setCellValueFactory(cellData -> cellData.getValue().getNameProperty());
+        pathColumn.setCellValueFactory(cellData -> cellData.getValue().getPathProperty());
+        lastUploadedColumn.setCellValueFactory(cellData -> cellData.getValue().getDateProperty());
 
+        //<Providers Tab>
+        handlersTable.setItems(handlerList);
+        handlerIdColumn.setCellValueFactory(cellData -> cellData.getValue().getIdProperty());
+        handlerFreesSizeColumn.setCellValueFactory(cellData -> cellData.getValue().getFreeSizeProperty());
+        handlerTotalSizeColumn.setCellValueFactory(cellData -> cellData.getValue().getTotalSizeProperty());
+        //</Providers Tab>
 
-        listBoxMain.setItems(listItems);
 
         // Disable buttons to start
         BtnDelete.setDisable(true);
 
-
+        //TODO: delete handler gomb
         // Add a ChangeListener to ListView to look for change in focus
-        listBoxMain.focusedProperty().addListener(new ChangeListener<Boolean>() {
+        /*listBoxMain.focusedProperty().addListener(new ChangeListener<Boolean>() {
             public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
                 if (listBoxMain.isFocused()) {
                     BtnDelete.setDisable(false);
                 }
             }
-        });
+        });*/
 
         storedFiles = new ArrayList<StoredFile>();
 
@@ -367,7 +381,7 @@ public class View {
             @Override
             public void handle(ActionEvent event) {
 
-                oneDriveHandler.getDriveMetaData();
+                oneDriveHandler.setDriveMetaData();
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("Test finished!");
@@ -382,7 +396,7 @@ public class View {
             @Override
             public void handle(ActionEvent event) {
 
-                googleDriveHandler.getDriveMetaData();
+                googleDriveHandler.setDriveMetaData();
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("Test finished!");
@@ -413,6 +427,9 @@ public class View {
             //TODO: handler es fajlnev
 
             storedFileDAO.persist(storedFile);
+
+            //File tab
+            storedFileList.add(storedFile);
         }
 
         for (StoredFile file : storedFileDAO.getAllStoredFile()) {
@@ -463,15 +480,12 @@ public class View {
             }
             if (newHandler != null) {
                 newHandler.login();
-                newHandler.getDriveMetaData();
+                newHandler.setDriveMetaData();
                 handlerDAO.persist(newHandler);
-                //System.out.println("Persisted handlers: " + handlerDAO.getAllStoredHandler().size());
-                listItems.add(Long.toString(newHandler.getId()));
+                newHandler.setIdProperty(Long.toString(newHandler.getId()));
+                handlerList.add(newHandler);
             }
         }
-
-       /* listItems.add();
-        System.out.println("Add Button Pushed");*/
     }
 
 

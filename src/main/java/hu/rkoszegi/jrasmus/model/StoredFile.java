@@ -1,6 +1,8 @@
 package hu.rkoszegi.jrasmus.model;
 
 import hu.rkoszegi.jrasmus.handler.BaseHandler;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 
 import javax.persistence.*;
 import java.util.Date;
@@ -24,6 +26,10 @@ public class StoredFile {
     private long id;
 
     public StoredFile() {
+
+        pathProperty = new SimpleStringProperty();
+        nameProperty = new SimpleStringProperty();
+        dateProperty = new SimpleStringProperty();
     }
 
     public String getPath() {
@@ -32,6 +38,7 @@ public class StoredFile {
 
     public void setPath(String path) {
         this.path = path;
+        this.pathProperty.set(path);
     }
 
     public Date getLastModified() {
@@ -40,6 +47,7 @@ public class StoredFile {
 
     public void setLastModified(Date lastModified) {
         this.lastModified = lastModified;
+        this.dateProperty.set(lastModified.toString());
     }
 
     public String getUploadName() {
@@ -48,6 +56,7 @@ public class StoredFile {
 
     public void setUploadName(String uploadName) {
         this.uploadName = uploadName;
+        this.nameProperty.set(uploadName);
     }
 
     public BaseHandler getHandler() {
@@ -64,5 +73,26 @@ public class StoredFile {
 
     public void setId(long id) {
         this.id = id;
+    }
+
+    //properties for JavaFx
+
+    @Transient
+    private StringProperty pathProperty;
+    @Transient
+    private StringProperty nameProperty;
+    @Transient
+    private StringProperty dateProperty;
+
+    public StringProperty getNameProperty() {
+        return nameProperty;
+    }
+
+    public StringProperty getPathProperty() {
+        return pathProperty;
+    }
+
+    public StringProperty getDateProperty() {
+        return dateProperty;
     }
 }

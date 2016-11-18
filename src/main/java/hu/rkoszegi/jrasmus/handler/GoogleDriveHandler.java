@@ -141,7 +141,7 @@ public class GoogleDriveHandler extends BaseHandler {
         String uploadLink = null;
         HttpsURLConnection createUploadConnection = null;
         try {
-            URL url = new URL("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable");
+            URL url = new URL("https://www.googleapis.com/upload/drive/v2/files?uploadType=resumable");
             createUploadConnection = (HttpsURLConnection) url.openConnection();
 
             createUploadConnection.setRequestMethod("POST");
@@ -158,7 +158,7 @@ public class GoogleDriveHandler extends BaseHandler {
             wr.close();
 
             uploadLink = createUploadConnection.getHeaderField("Location");
-            printAllResponseHeaders(createUploadConnection);
+            //printAllResponseHeaders(createUploadConnection);
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -166,11 +166,11 @@ public class GoogleDriveHandler extends BaseHandler {
             //openconn miatt
             e.printStackTrace();
         }
-        finally {
+        /*finally {
             if (createUploadConnection != null) {
                 createUploadConnection.disconnect();
             }
-        }
+        }*/
         return uploadLink;
     }
 
@@ -187,6 +187,7 @@ public class GoogleDriveHandler extends BaseHandler {
                 connection.setRequestMethod("PUT");
                 connection.setRequestProperty("Authorization", "Bearer " + accessToken);
                 connection.setDoOutput(true);
+                connection.setUseCaches(false);
 
                 int packetSize;
                 int startByteNumber = currentPacketNr * Math.toIntExact(UPLOAD_PACKET_SIZE);
@@ -200,24 +201,27 @@ public class GoogleDriveHandler extends BaseHandler {
                     rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + totalSize;
                     packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
                 }
+                System.out.println("Range header: " + rangeHeader);
                 connection.setRequestProperty("Content-Range", rangeHeader);
                 connection.setFixedLengthStreamingMode(packetSize);
 
                 DataOutputStream wr = new DataOutputStream(
                         connection.getOutputStream());
                 wr.write(Files.readAllBytes(file.toPath()), uploadedBytesNr, packetSize);
+                wr.flush();
                 wr.close();
 
                 uploadedBytesNr += packetSize;
-
                 System.out.println("Response: " + connection.getResponseCode() + " " + connection.getResponseMessage());
+                printAllResponseHeaders(connection);
+
 
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-               /* if (connection != null) {
+                if (connection != null) {
                     connection.disconnect();
-                }*/
+                }
             }
         }
     }
@@ -452,7 +456,7 @@ public class GoogleDriveHandler extends BaseHandler {
         }
     }
 
-    public void getDriveMetaData() {
+    public void setDriveMetaData() {
         try {
             URL url = new URL("https://www.googleapis.com/drive/v2/about");
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
@@ -463,17 +467,14 @@ public class GoogleDriveHandler extends BaseHandler {
             JsonReader jSonReader = Json.createReader(connection.getInputStream());
             JsonObject rootObject = jSonReader.readObject();
 
-            totalSize = Long.parseLong(rootObject.getString("quotaBytesTotal"));
+            this.setTotalSize(Long.parseLong(rootObject.getString("quotaBytesTotal")));
             JsonArray array = rootObject.getJsonArray("quotaBytesByService");
             long usedSize = 0;
             for(int i = 0; i< array.size(); i++) {
                 usedSize += Long.parseLong(array.getJsonObject(i).getString("bytesUsed"));
             }
 
-            freeSize = totalSize - usedSize;
-
-            System.out.println("Total: " + totalSize);
-            System.out.println("Free:  " + freeSize);
+            this.setFreeSize(this.getTotalSize() - usedSize);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();

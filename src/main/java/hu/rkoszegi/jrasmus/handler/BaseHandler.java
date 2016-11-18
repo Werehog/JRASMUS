@@ -3,6 +3,8 @@ package hu.rkoszegi.jrasmus.handler;
 import hu.rkoszegi.jrasmus.crypto.KeyManager;
 import hu.rkoszegi.jrasmus.WebLogin;
 import hu.rkoszegi.jrasmus.model.AbstractEntity;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -27,10 +29,11 @@ import java.util.*;
 @Table(name="HANDLER")
 public abstract class BaseHandler extends AbstractEntity {
 
+    @Lob
     protected String accessToken;
 
-    protected long totalSize;
-    protected long freeSize;
+    private long totalSize;
+    private long freeSize;
 
     @Transient
     protected static final long UPLOAD_PACKET_SIZE = 7* 320 * 1024;
@@ -42,9 +45,13 @@ public abstract class BaseHandler extends AbstractEntity {
     @Transient
     protected String bearer;
 
-    public BaseHandler() {}
+    public BaseHandler() {
+        idProperty = new SimpleStringProperty();
+        freeSizeProperty = new SimpleStringProperty();
+        totalSizeProperty = new SimpleStringProperty();
+    }
 
-    public abstract void getDriveMetaData();
+    public abstract void setDriveMetaData();
 
     public void login() {
         Properties properties = new Properties();
@@ -286,11 +293,11 @@ public abstract class BaseHandler extends AbstractEntity {
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
-                } finally {
-                    /*if (connection != null) {
+                } /*finally {
+                    *//*if (connection != null) {
                         connection.disconnect();
-                    }*/
-                }
+                    }*//*
+                }*/
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -308,5 +315,52 @@ public abstract class BaseHandler extends AbstractEntity {
 
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
+    }
+
+    //FXML miatt
+    @Transient
+    private StringProperty idProperty;
+    @Transient
+    private StringProperty freeSizeProperty;
+    @Transient
+    private StringProperty totalSizeProperty;
+
+    public StringProperty getIdProperty() {
+        return idProperty;
+    }
+
+    public StringProperty getFreeSizeProperty() {
+        return freeSizeProperty;
+    }
+
+    public StringProperty getTotalSizeProperty() {
+        return totalSizeProperty;
+    }
+
+    public void setIdProperty(String id) {
+        this.idProperty.set(id);
+    }
+
+    public long getTotalSize() {
+        return totalSize;
+    }
+
+    public void setTotalSize(long totalSize) {
+        this.totalSize = totalSize;
+        this.totalSizeProperty.set(Long.toString(totalSize));
+    }
+
+    public long getFreeSize() {
+        return freeSize;
+    }
+
+    public void setFreeSize(long freeSize) {
+        this.freeSize = freeSize;
+        this.freeSizeProperty.set(Long.toString(freeSize));
+    }
+
+    public void setId(long id) {
+        this.id = id;
+        this.idProperty.set(Long.toString(id));
     }
 }

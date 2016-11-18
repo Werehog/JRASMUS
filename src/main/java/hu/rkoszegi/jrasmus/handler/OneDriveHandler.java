@@ -58,8 +58,19 @@ public class OneDriveHandler extends BaseHandler {
             wr.writeBytes(content);
             wr.close();
 
-            accessToken = getObjectFromJSONInput(connection.getInputStream(), "access_token");
+            JsonReader jSonReader = Json.createReader(connection.getInputStream());
+            JsonObject obj = jSonReader.readObject();
 
+            accessToken = obj.getString("access_token");
+
+            System.out.println("Access token: " + accessToken);
+
+            System.out.println("Size: " + accessToken.length());
+
+
+            String refreshToken = obj.getString("refresh_token");
+            System.out.println("Refresh token: " + refreshToken);
+            System.out.println("Size: " + refreshToken.length());
             //Print response package header start
             printAllResponseHeaders(connection);
 
@@ -426,7 +437,7 @@ public class OneDriveHandler extends BaseHandler {
         }
     }
 
-    public void getDriveMetaData() {
+    public void setDriveMetaData() {
         HttpsURLConnection connection = null;
         try {
             URL url = new URL("https://api.onedrive.com/v1.0/drive");
@@ -439,8 +450,8 @@ public class OneDriveHandler extends BaseHandler {
             JsonObject rootObject = jSonReader.readObject();
             JsonObject qoutaObject = rootObject.getJsonObject("quota");
 
-            totalSize = qoutaObject.getJsonNumber("total").longValueExact();
-            freeSize = qoutaObject.getJsonNumber("remaining").longValueExact();
+            this.setTotalSize(qoutaObject.getJsonNumber("total").longValueExact());
+            this.setFreeSize(qoutaObject.getJsonNumber("remaining").longValueExact());
         } catch (ProtocolException e) {
             e.printStackTrace();
         } catch (MalformedURLException e) {
