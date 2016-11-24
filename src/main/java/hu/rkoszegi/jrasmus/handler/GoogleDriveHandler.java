@@ -6,6 +6,7 @@ import hu.rkoszegi.jrasmus.model.GDriveFile;
 import hu.rkoszegi.jrasmus.model.StoredFile;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -174,7 +175,7 @@ public class GoogleDriveHandler extends BaseHandler {
         return uploadLink;
     }
 
-    protected void uploadFragments(File file, String uploadLink) {
+    /*protected void uploadFragments(File file, String uploadLink) {
         int totalSize = Math.toIntExact(file.length());
         int packageNumber = Math.toIntExact(totalSize / UPLOAD_PACKET_SIZE) + 1;
         int uploadedBytesNr = 0;
@@ -224,6 +225,132 @@ public class GoogleDriveHandler extends BaseHandler {
                 }
             }
         }
+    }*/
+
+    protected void uploadFragments(File file, String uploadLink) {
+        long totalFileSize = file.length();
+        long encryptedFileSize = (totalFileSize / 16 + 1) * 16;
+        long packageNumber = 0;
+
+        int uploadedBytesNr = 0;
+/*        int readBytesFromFile = 0;
+
+        final long readBytesNumberFromFile = (UPLOAD_PACKET_SIZE / 16 - 1) * 16;*/
+
+       /* long packageNumber = (totalFileSize / readBytesNumberFromFile) + 1;
+        long lastEncodedChunkSize = ((totalFileSize % readBytesNumberFromFile) / 16 + 1) * 16;
+        long encryptedFileSize = packageNumber * UPLOAD_PACKET_SIZE + lastEncodedChunkSize;*/
+
+        System.out.println("total file size: " + totalFileSize);
+        System.out.println("encrypted file size: " + encryptedFileSize);
+        System.out.println("Package nr : " + packageNumber);
+
+        int i =0;
+
+        try(CipherInputStream cis = new CipherInputStream(new FileInputStream(file), getEncryptorCipher())) {
+            while(uploadedBytesNr < encryptedFileSize) {
+                System.out.println((++packageNumber) + ". package");
+                HttpsURLConnection connection = null;
+                try {
+                    URL url = new URL(uploadLink);
+                    connection = (HttpsURLConnection) url.openConnection();
+                    connection.setRequestMethod("PUT");
+                    connection.setRequestProperty("Authorization", "bearer " + accessToken);
+                    connection.setDoOutput(true);
+
+                    //TEST
+                    connection.setDoInput(true);
+
+
+                    int packetSize;
+                    int startByteNumber = uploadedBytesNr;
+                    String rangeHeader;
+                    int readSize = 0;
+                    if (encryptedFileSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
+                        long endByteNumber = encryptedFileSize - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize =Math.toIntExact(encryptedFileSize - uploadedBytesNr);
+                        //readSize = Math.toIntExact(totalFileSize - readBytesFromFile);
+                    } else {
+                        long endByteNumber = startByteNumber + UPLOAD_PACKET_SIZE - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
+                        //readSize = Math.toIntExact(readBytesNumberFromFile);
+                    }
+                    connection.setRequestProperty("Content-Range", rangeHeader);
+                    connection.setFixedLengthStreamingMode(packetSize);
+
+                   /* byte[] data = new byte[packetSize];*/
+                    //int currread = cis.read(data, uploadedBytesNr, packetSize);
+                   /* ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
+                    byte[] data = encryptToOutputStream(bais);*/
+
+                    System.out.println(rangeHeader);
+                    System.out.println("Packet size: " + packetSize);
+                    /*System.out.println("Array size: " + data.length);
+                    System.out.println("Currently read: " + currread);*/
+
+
+                    DataOutputStream wr = new DataOutputStream(
+                            connection.getOutputStream());
+
+                    int pckCounter = packetSize;
+                    while(pckCounter - 512 >= 0) {
+                        byte[] b = new byte[512];
+                        cis.read(b);
+                        wr.write(b);
+                        pckCounter-=512;
+                    }
+
+                    int remainedByteNr = pckCounter % 512;
+                    if(remainedByteNr != 0) {
+                        byte[] b = new byte[remainedByteNr];
+                        cis.read(b);
+                        wr.write(b);
+                    }
+                    //wr.flush();
+                    //wr.write(data);
+                    wr.close();
+
+                    //readBytesFromFile += readSize;
+
+
+                    System.out.println(connection.getResponseCode() + " " + connection.getResponseMessage());
+                    //printAllResponseHeaders(connection);
+
+                    if(connection.getResponseCode() != 308)
+                        break;
+
+                    String responseRangeHeader = connection.getHeaderField("Range");
+                    System.out.println("responseRangeHeader: " + responseRangeHeader);
+                    String sikeresen = responseRangeHeader.substring(responseRangeHeader.indexOf("-") + 1);
+                    int nextStartIndex = Integer.parseInt(sikeresen);
+
+                    uploadedBytesNr = nextStartIndex;
+                    System.out.println("NextStartIndex: " + nextStartIndex);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    break;
+                } finally {
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+
+        }
+        //TODO: utolso uzenetet olvasni
+    }
+
+
+    @Override
+    public void refreshToken() {
+        //TODO: Irj meg pls
     }
 
 

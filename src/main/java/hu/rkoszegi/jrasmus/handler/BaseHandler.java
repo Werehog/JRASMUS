@@ -32,6 +32,9 @@ public abstract class BaseHandler extends AbstractEntity {
     @Lob
     protected String accessToken;
 
+    @Lob
+    protected String refreshToken;
+
     private long totalSize;
     private long freeSize;
 
@@ -204,7 +207,7 @@ public abstract class BaseHandler extends AbstractEntity {
         return cipher;
     }
 
-    protected void uploadFragments(File file, String uploadLink) {
+    /*protected void uploadFragments(File file, String uploadLink) {
         long totalFileSize = file.length();
         long encryptedFileSize = (totalFileSize / 16 + 1) * 16;
         long packageNumber = ( encryptedFileSize / UPLOAD_PACKET_SIZE) + 1;
@@ -293,11 +296,11 @@ public abstract class BaseHandler extends AbstractEntity {
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
-                } /*finally {
-                    *//*if (connection != null) {
+                } *//*finally {
+                    *//**//*if (connection != null) {
                         connection.disconnect();
-                    }*//*
-                }*/
+                    }*//**//*
+                }*//*
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -306,7 +309,106 @@ public abstract class BaseHandler extends AbstractEntity {
         }
 
         //TODO: utolso uzenetet olvasni
-    }
+    }*/
+
+
+    /*protected void uploadFragments(File file, String uploadLink) {
+        long totalFileSize = file.length();
+        long encryptedFileSize = (totalFileSize / 16 + 1) * 16;
+        long packageNumber = ( encryptedFileSize / UPLOAD_PACKET_SIZE) + 1;
+
+        int uploadedBytesNr = 0;
+        int readBytesFromFile = 0;
+
+        final long readBytesNumberFromFile = (UPLOAD_PACKET_SIZE / 16 - 1) * 16;
+
+        *//*long packageNumber = (totalFileSize / readBytesNumberFromFile) + 1;
+        long lastEncodedChunkSize = ((totalFileSize % readBytesNumberFromFile) / 16 + 1) * 16;
+        long encryptedFileSize = packageNumber * UPLOAD_PACKET_SIZE + lastEncodedChunkSize;*//*
+
+        System.out.println("total file size: " + totalFileSize);
+        System.out.println("encrypted file size: " + encryptedFileSize);
+        System.out.println("Package nr : " + packageNumber);
+
+        try(CipherInputStream cis = new CipherInputStream(new FileInputStream(file), getEncryptorCipher())) {
+            for (int currentPacketNr = 0; currentPacketNr < packageNumber; currentPacketNr++) {
+                System.out.println((currentPacketNr + 1) + "/" + packageNumber + " package");
+                HttpsURLConnection connection = null;
+                try {
+                    URL url = new URL(uploadLink);
+                    connection = (HttpsURLConnection) url.openConnection();
+                    connection.setRequestMethod("PUT");
+                    connection.setRequestProperty("Authorization", "bearer " + accessToken);
+                    connection.setDoOutput(true);
+
+                    //TEST
+                    connection.setDoInput(true);
+
+
+                    int packetSize;
+                    int startByteNumber = uploadedBytesNr;
+                    String rangeHeader;
+                    int readSize = 0;
+                    if (encryptedFileSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
+                        long endByteNumber = encryptedFileSize - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize =Math.toIntExact(encryptedFileSize - uploadedBytesNr);
+                        //readSize = Math.toIntExact(totalFileSize - readBytesFromFile);
+                    } else {
+                        long endByteNumber = startByteNumber + UPLOAD_PACKET_SIZE - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
+                        //readSize = Math.toIntExact(readBytesNumberFromFile);
+                    }
+                    connection.setRequestProperty("Content-Range", rangeHeader);
+                    connection.setFixedLengthStreamingMode(packetSize);
+
+                    byte[] data = new byte[packetSize];
+                    //int currread = cis.read(data, uploadedBytesNr, packetSize);
+                   *//* ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
+                    byte[] data = encryptToOutputStream(bais);*//*
+
+                    System.out.println(rangeHeader);
+                    System.out.println("Packet size: " + packetSize);
+                    *//*System.out.println("Array size: " + data.length);
+                    System.out.println("Currently read: " + currread);*//*
+
+
+                    DataOutputStream wr = new DataOutputStream(
+                            connection.getOutputStream());
+
+                    for(int i = 0; i < (packetSize / 512); i++) {
+                        byte[] b = new byte[512];
+                        cis.read(b);
+                        wr.write(b);
+
+                    }
+                    wr.flush();
+                    //wr.write(data);
+                    wr.close();
+
+                    //readBytesFromFile += readSize;
+                    uploadedBytesNr += packetSize;
+
+                    System.out.println(connection.getResponseCode() + " " + connection.getResponseMessage());
+                    printAllResponseHeaders(connection);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //TODO: utolso uzenetet olvasni
+    }*/
 
 
     public String getAccessToken() {
@@ -363,4 +465,6 @@ public abstract class BaseHandler extends AbstractEntity {
         this.id = id;
         this.idProperty.set(Long.toString(id));
     }
+
+    public abstract void refreshToken();
 }

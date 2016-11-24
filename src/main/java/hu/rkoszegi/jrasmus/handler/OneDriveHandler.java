@@ -4,6 +4,7 @@ import com.sun.deploy.net.URLEncoder;
 import com.sun.deploy.util.SyncAccess;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -17,6 +18,7 @@ import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.file.*;
+import java.util.Properties;
 
 /**
  * Created by Richárd on 2016.09.13..
@@ -68,9 +70,77 @@ public class OneDriveHandler extends BaseHandler {
             System.out.println("Size: " + accessToken.length());
 
 
-            String refreshToken = obj.getString("refresh_token");
+            refreshToken = obj.getString("refresh_token");
             System.out.println("Refresh token: " + refreshToken);
             System.out.println("Size: " + refreshToken.length());
+            //Print response package header start
+            printAllResponseHeaders(connection);
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            //openconn miatt
+            e.printStackTrace();
+        }
+        finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    @Override
+    public void refreshToken() {
+        System.out.println("refreshToken called");
+        System.out.println("Old access token: " + accessToken);
+
+        Properties properties = new Properties();
+        String clientId = null;
+        String clientSecret = null;
+        String redirectUri = null;
+        try(InputStream propertyInputStream = BaseHandler.class.getResourceAsStream( propertyFileName)){
+            properties.load(propertyInputStream);
+            clientId = properties.getProperty("clientId");
+            clientSecret = properties.getProperty("clientSecret");
+            redirectUri = properties.getProperty("redirectUri");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+        HttpsURLConnection connection = null;
+        try {
+            URL url = new URL("https://login.live.com/oauth20_token.srf");
+            connection = (HttpsURLConnection) url.openConnection();
+
+            connection.setRequestMethod("POST");
+
+            String content = "client_id=" + clientId +
+                    "&redirect_uri=" + redirectUri +
+                    "&client_secret=" + clientSecret +
+                    "&refresh_token=" + refreshToken +
+                    "&grant_type=refresh_token";
+
+            connection.setRequestProperty("Content-Length", Integer.toString(content.length()));
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+            //Kellenek-e
+            connection.setUseCaches(false);
+            connection.setDoOutput(true);//Post vagy putnal kell ha akarunk adatot kuldeni
+            connection.setDoInput(true);//Kell ha a valaszbol olvasni akarunk
+
+            //Send request
+            DataOutputStream wr = new DataOutputStream (
+                    connection.getOutputStream());
+            wr.writeBytes(content);
+            wr.close();
+
+            JsonReader jSonReader = Json.createReader(connection.getInputStream());
+            JsonObject obj = jSonReader.readObject();
+
+            accessToken = obj.getString("access_token");
+
+            System.out.println("NEW Access token: " + accessToken);
+
             //Print response package header start
             printAllResponseHeaders(connection);
 
@@ -250,6 +320,100 @@ public class OneDriveHandler extends BaseHandler {
 
         //TODO: utolso uzenetet olvasni
     }*/
+
+    protected void uploadFragments(File file, String uploadLink) {
+        long totalFileSize = file.length();
+        long encryptedFileSize = (totalFileSize / 16 + 1) * 16;
+        long packageNumber = ( encryptedFileSize / UPLOAD_PACKET_SIZE) + 1;
+
+        int uploadedBytesNr = 0;
+        int readBytesFromFile = 0;
+
+        final long readBytesNumberFromFile = (UPLOAD_PACKET_SIZE / 16 - 1) * 16;
+
+        /*long packageNumber = (totalFileSize / readBytesNumberFromFile) + 1;
+        long lastEncodedChunkSize = ((totalFileSize % readBytesNumberFromFile) / 16 + 1) * 16;
+        long encryptedFileSize = packageNumber * UPLOAD_PACKET_SIZE + lastEncodedChunkSize;*/
+
+        System.out.println("total file size: " + totalFileSize);
+        System.out.println("encrypted file size: " + encryptedFileSize);
+        System.out.println("Package nr : " + packageNumber);
+
+        try(CipherInputStream cis = new CipherInputStream(new FileInputStream(file), getEncryptorCipher())) {
+            for (int currentPacketNr = 0; currentPacketNr < packageNumber; currentPacketNr++) {
+                System.out.println((currentPacketNr + 1) + "/" + packageNumber + " package");
+                HttpsURLConnection connection = null;
+                try {
+                    URL url = new URL(uploadLink);
+                    connection = (HttpsURLConnection) url.openConnection();
+                    connection.setRequestMethod("PUT");
+                    connection.setRequestProperty("Authorization", "bearer " + accessToken);
+                    connection.setDoOutput(true);
+
+                    //TEST
+                    connection.setDoInput(true);
+
+
+                    int packetSize;
+                    int startByteNumber = uploadedBytesNr;
+                    String rangeHeader;
+                    int readSize = 0;
+                    if (encryptedFileSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
+                        long endByteNumber = encryptedFileSize - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize =Math.toIntExact(encryptedFileSize - uploadedBytesNr);
+                        //readSize = Math.toIntExact(totalFileSize - readBytesFromFile);
+                    } else {
+                        long endByteNumber = startByteNumber + UPLOAD_PACKET_SIZE - 1;
+                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                        packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
+                        //readSize = Math.toIntExact(readBytesNumberFromFile);
+                    }
+                    connection.setRequestProperty("Content-Range", rangeHeader);
+                    connection.setFixedLengthStreamingMode(packetSize);
+
+                    byte[] data = new byte[packetSize];
+                    //int currread = cis.read(data, uploadedBytesNr, packetSize);
+                   /* ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
+                    byte[] data = encryptToOutputStream(bais);*/
+
+                   /* System.out.println(rangeHeader);
+                    System.out.println("Array size: " + data.length);
+                    System.out.println("Currently read: " + currread);*/
+
+
+                    DataOutputStream wr = new DataOutputStream(
+                            connection.getOutputStream());
+
+                    for(int i = 0; i < (packetSize / 8); i++) {
+                        byte[] b = new byte[8];
+                        cis.read(b);
+                        wr.write(b);
+                    }
+                    //wr.write(data);
+                    wr.close();
+
+                    //readBytesFromFile += readSize;
+                    uploadedBytesNr += packetSize;
+
+                    System.out.println(connection.getResponseCode() + " " + connection.getResponseMessage());
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //TODO: utolso uzenetet olvasni
+    }
 
     private void cancelUpload(String uploadLink) {
         //TODO: ellenorizni, kell-e

@@ -273,6 +273,14 @@ public class View {
             }
         });
 
+        Button refreshOdrButton = new Button("Refresh ODR token");
+        refreshOdrButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                oneDriveHandler.refreshToken();
+            }
+        });
+
         GoogleDriveHandler googleDriveHandler = new GoogleDriveHandler();
 
         Button GDLoginButton = new Button("Google Drive Login");
@@ -407,7 +415,7 @@ public class View {
         });
 
 
-        FlowPane flowPane = new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton,
+        FlowPane flowPane = new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton, refreshOdrButton,
                 GDLoginButton, gDriveUploadButton, gDriveUploadBIGButton, gDriveListFilesButton, gDriveDownloadButton, gDriveDeleteButton,
                 criptoTestButton, getOdrMetaButton, getGdrMetaButton);
         Tab tab = new Tab("Test");
