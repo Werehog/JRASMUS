@@ -1,5 +1,6 @@
 package hu.rkoszegi.jrasmus;
 
+import hu.rkoszegi.jrasmus.crypto.KeyManager;
 import hu.rkoszegi.jrasmus.dao.HandlerDAO;
 import hu.rkoszegi.jrasmus.dao.StoredFileDAO;
 import hu.rkoszegi.jrasmus.handler.BaseHandler;
@@ -291,6 +292,14 @@ public class View {
             }
         });
 
+        Button refreshGDButton = new Button("Refresh GD token");
+        refreshGDButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                googleDriveHandler.refreshToken();
+            }
+        });
+
         Button gDriveUploadButton = new Button("Upload to GoogleDrive");
         gDriveUploadButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
@@ -369,7 +378,7 @@ public class View {
         criptoTestButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                TextInputDialog textInputDialog = new TextInputDialog();
+               /* TextInputDialog textInputDialog = new TextInputDialog();
                 textInputDialog.setTitle("Password");
                 textInputDialog.setContentText("Please enter a password:");
 
@@ -380,7 +389,11 @@ public class View {
                     alert.setTitle("Test finished!");
                     alert.setHeaderText("Such test much wow!");
                     alert.showAndWait();
-                }
+                }*/
+
+                FileChooser fileChooser = new FileChooser();
+                File file = fileChooser.showOpenDialog(rootLayout.getScene().getWindow());
+                CryptoTest.decryptSuchFile(KeyManager.getKey(),file);
             }
         });
 
@@ -416,7 +429,7 @@ public class View {
 
 
         FlowPane flowPane = new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton, refreshOdrButton,
-                GDLoginButton, gDriveUploadButton, gDriveUploadBIGButton, gDriveListFilesButton, gDriveDownloadButton, gDriveDeleteButton,
+                GDLoginButton, refreshGDButton, gDriveUploadButton, gDriveUploadBIGButton, gDriveListFilesButton, gDriveDownloadButton, gDriveDeleteButton,
                 criptoTestButton, getOdrMetaButton, getGdrMetaButton);
         Tab tab = new Tab("Test");
         tab.setContent(flowPane);

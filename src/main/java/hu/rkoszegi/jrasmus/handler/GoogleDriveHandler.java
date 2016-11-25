@@ -20,6 +20,7 @@ import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.Properties;
 
 /**
  * Created by rkoszegi on 01/11/2016.
@@ -62,8 +63,13 @@ public class GoogleDriveHandler extends BaseHandler {
                     connection.getOutputStream());
             wr.writeBytes(content);
             wr.close();
-            printAllResponseHeaders(connection);
-            accessToken = getObjectFromJSONInput(connection.getInputStream(), "access_token");
+
+            System.out.println(connection.getResponseCode() + " " + connection.getResponseMessage());
+
+            JsonReader jSonReader = Json.createReader(connection.getInputStream());
+            JsonObject obj = jSonReader.readObject();
+            accessToken = obj.getString("access_token");
+            refreshToken = obj.getString("refresh_token");
         } catch (MalformedURLException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -142,15 +148,17 @@ public class GoogleDriveHandler extends BaseHandler {
         String uploadLink = null;
         HttpsURLConnection createUploadConnection = null;
         try {
-            URL url = new URL("https://www.googleapis.com/upload/drive/v2/files?uploadType=resumable");
+            URL url = new URL("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable");
             createUploadConnection = (HttpsURLConnection) url.openConnection();
 
             createUploadConnection.setRequestMethod("POST");
             createUploadConnection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             createUploadConnection.setRequestProperty("Authorization", "Bearer " + accessToken);
+            createUploadConnection.setRequestProperty("X-Upload-Content-Type", "text/plain");
             createUploadConnection.setDoInput(true);
 
             String metadata = "{\"name\":\"" + file.getName() + "\"}";
+            System.out.println(metadata);
             createUploadConnection.setRequestProperty("Content-Length", Integer.toString(metadata.length()));
             createUploadConnection.setDoOutput(true);
             DataOutputStream wr = new DataOutputStream (
@@ -159,7 +167,9 @@ public class GoogleDriveHandler extends BaseHandler {
             wr.close();
 
             uploadLink = createUploadConnection.getHeaderField("Location");
-            //printAllResponseHeaders(createUploadConnection);
+            printAllResponseHeaders(createUploadConnection);
+            String resp = readResponseBody(createUploadConnection.getInputStream());
+            System.out.println("Resp: " + resp);
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -167,85 +177,23 @@ public class GoogleDriveHandler extends BaseHandler {
             //openconn miatt
             e.printStackTrace();
         }
-        /*finally {
+        finally {
             if (createUploadConnection != null) {
                 createUploadConnection.disconnect();
             }
-        }*/
+        }
         return uploadLink;
     }
 
-    /*protected void uploadFragments(File file, String uploadLink) {
-        int totalSize = Math.toIntExact(file.length());
-        int packageNumber = Math.toIntExact(totalSize / UPLOAD_PACKET_SIZE) + 1;
-        int uploadedBytesNr = 0;
-        System.out.println("Package number: " + packageNumber);
-        for (int currentPacketNr = 0; currentPacketNr < packageNumber; currentPacketNr++) {
-            HttpsURLConnection connection = null;
-            try {
-                URL url = new URL(uploadLink);
-                connection = (HttpsURLConnection) url.openConnection();
-                connection.setRequestMethod("PUT");
-                connection.setRequestProperty("Authorization", "Bearer " + accessToken);
-                connection.setDoOutput(true);
-                connection.setUseCaches(false);
-
-                int packetSize;
-                int startByteNumber = currentPacketNr * Math.toIntExact(UPLOAD_PACKET_SIZE);
-                String rangeHeader;
-                if (totalSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
-                    int endByteNumber = totalSize - 1;
-                    rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + totalSize;
-                    packetSize = totalSize - uploadedBytesNr;
-                } else {
-                    int endByteNumber = (currentPacketNr + 1) * Math.toIntExact(UPLOAD_PACKET_SIZE) - 1;
-                    rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + totalSize;
-                    packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
-                }
-                System.out.println("Range header: " + rangeHeader);
-                connection.setRequestProperty("Content-Range", rangeHeader);
-                connection.setFixedLengthStreamingMode(packetSize);
-
-                DataOutputStream wr = new DataOutputStream(
-                        connection.getOutputStream());
-                wr.write(Files.readAllBytes(file.toPath()), uploadedBytesNr, packetSize);
-                wr.flush();
-                wr.close();
-
-                uploadedBytesNr += packetSize;
-                System.out.println("Response: " + connection.getResponseCode() + " " + connection.getResponseMessage());
-                printAllResponseHeaders(connection);
-
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-            }
-        }
-    }*/
-
     protected void uploadFragments(File file, String uploadLink) {
+
+        long UPLOAD_PACKET_SIZE = 256 * 1024 * 7;
+
         long totalFileSize = file.length();
         long encryptedFileSize = (totalFileSize / 16 + 1) * 16;
         long packageNumber = 0;
 
         int uploadedBytesNr = 0;
-/*        int readBytesFromFile = 0;
-
-        final long readBytesNumberFromFile = (UPLOAD_PACKET_SIZE / 16 - 1) * 16;*/
-
-       /* long packageNumber = (totalFileSize / readBytesNumberFromFile) + 1;
-        long lastEncodedChunkSize = ((totalFileSize % readBytesNumberFromFile) / 16 + 1) * 16;
-        long encryptedFileSize = packageNumber * UPLOAD_PACKET_SIZE + lastEncodedChunkSize;*/
-
-        System.out.println("total file size: " + totalFileSize);
-        System.out.println("encrypted file size: " + encryptedFileSize);
-        System.out.println("Package nr : " + packageNumber);
-
-        int i =0;
 
         try(CipherInputStream cis = new CipherInputStream(new FileInputStream(file), getEncryptorCipher())) {
             while(uploadedBytesNr < encryptedFileSize) {
@@ -258,77 +206,48 @@ public class GoogleDriveHandler extends BaseHandler {
                     connection.setRequestProperty("Authorization", "bearer " + accessToken);
                     connection.setDoOutput(true);
 
-                    //TEST
-                    connection.setDoInput(true);
-
-
                     int packetSize;
                     int startByteNumber = uploadedBytesNr;
                     String rangeHeader;
-                    int readSize = 0;
                     if (encryptedFileSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
                         long endByteNumber = encryptedFileSize - 1;
                         rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
                         packetSize =Math.toIntExact(encryptedFileSize - uploadedBytesNr);
-                        //readSize = Math.toIntExact(totalFileSize - readBytesFromFile);
                     } else {
                         long endByteNumber = startByteNumber + UPLOAD_PACKET_SIZE - 1;
                         rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
                         packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
-                        //readSize = Math.toIntExact(readBytesNumberFromFile);
                     }
                     connection.setRequestProperty("Content-Range", rangeHeader);
                     connection.setFixedLengthStreamingMode(packetSize);
-
-                   /* byte[] data = new byte[packetSize];*/
-                    //int currread = cis.read(data, uploadedBytesNr, packetSize);
-                   /* ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
-                    byte[] data = encryptToOutputStream(bais);*/
-
-                    System.out.println(rangeHeader);
-                    System.out.println("Packet size: " + packetSize);
-                    /*System.out.println("Array size: " + data.length);
-                    System.out.println("Currently read: " + currread);*/
-
 
                     DataOutputStream wr = new DataOutputStream(
                             connection.getOutputStream());
 
                     int pckCounter = packetSize;
-                    while(pckCounter - 512 >= 0) {
-                        byte[] b = new byte[512];
-                        cis.read(b);
-                        wr.write(b);
-                        pckCounter-=512;
+                    byte[] b = new byte[packetSize];
+                    while(pckCounter - 16 >= 0) {
+                        cis.read(b, packetSize - pckCounter,16);
+                        pckCounter-=16;
                     }
 
-                    int remainedByteNr = pckCounter % 512;
-                    if(remainedByteNr != 0) {
-                        byte[] b = new byte[remainedByteNr];
-                        cis.read(b);
-                        wr.write(b);
+                    if(pckCounter != 0) {
+                        int remainedByteNr = pckCounter % 16;
+                        cis.read(b, packetSize - remainedByteNr, remainedByteNr);
                     }
-                    //wr.flush();
-                    //wr.write(data);
+                    wr.write(b);
                     wr.close();
 
-                    //readBytesFromFile += readSize;
-
-
                     System.out.println(connection.getResponseCode() + " " + connection.getResponseMessage());
-                    //printAllResponseHeaders(connection);
 
                     if(connection.getResponseCode() != 308)
                         break;
 
                     String responseRangeHeader = connection.getHeaderField("Range");
-                    System.out.println("responseRangeHeader: " + responseRangeHeader);
-                    String sikeresen = responseRangeHeader.substring(responseRangeHeader.indexOf("-") + 1);
-                    int nextStartIndex = Integer.parseInt(sikeresen);
+                    String nextStartIndexString = responseRangeHeader.substring(responseRangeHeader.indexOf("-") + 1);
+                    int nextStartIndex = Integer.parseInt(nextStartIndexString);
 
-                    uploadedBytesNr = nextStartIndex;
-                    System.out.println("NextStartIndex: " + nextStartIndex);
-
+                    uploadedBytesNr = nextStartIndex + 1;
                 } catch (IOException e) {
                     e.printStackTrace();
                     break;
@@ -350,7 +269,63 @@ public class GoogleDriveHandler extends BaseHandler {
 
     @Override
     public void refreshToken() {
-        //TODO: Irj meg pls
+        System.out.println("refreshToken called");
+        System.out.println("Old access token: " + accessToken);
+
+        Properties properties = new Properties();
+        String clientId = null;
+        String clientSecret = null;
+        try(InputStream propertyInputStream = BaseHandler.class.getResourceAsStream( propertyFileName)){
+            properties.load(propertyInputStream);
+            clientId = properties.getProperty("clientId");
+            clientSecret = properties.getProperty("clientSecret");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+        HttpsURLConnection connection = null;
+        try {
+            URL url = new URL("https://www.googleapis.com/oauth2/v4/token");
+            connection = (HttpsURLConnection) url.openConnection();
+
+            connection.setRequestMethod("POST");
+
+            String content = "client_id=" + clientId +
+                    "&client_secret=" + clientSecret +
+                    "&refresh_token=" + refreshToken +
+                    "&grant_type=refresh_token";
+
+            connection.setRequestProperty("Content-Length", Integer.toString(content.length()));
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+            //Kellenek-e
+            connection.setUseCaches(false);
+            connection.setDoOutput(true);//Post vagy putnal kell ha akarunk adatot kuldeni
+            connection.setDoInput(true);//Kell ha a valaszbol olvasni akarunk
+
+            //Send request
+            DataOutputStream wr = new DataOutputStream (
+                    connection.getOutputStream());
+            wr.writeBytes(content);
+            wr.close();
+
+            System.out.println(connection.getResponseCode() + " " + connection.getResponseMessage());
+
+            JsonReader jSonReader = Json.createReader(connection.getInputStream());
+            JsonObject obj = jSonReader.readObject();
+            accessToken = obj.getString("access_token");
+            System.out.println("NEW Access token: " + accessToken);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            //openconn miatt
+            e.printStackTrace();
+        }
+        finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
     }
 
 
