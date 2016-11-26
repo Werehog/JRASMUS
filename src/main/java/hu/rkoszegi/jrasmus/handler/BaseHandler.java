@@ -1,7 +1,10 @@
 package hu.rkoszegi.jrasmus.handler;
 
+import hu.rkoszegi.jrasmus.Request;
 import hu.rkoszegi.jrasmus.crypto.KeyManager;
 import hu.rkoszegi.jrasmus.WebLogin;
+import hu.rkoszegi.jrasmus.exception.ServiceUnavailableException;
+import hu.rkoszegi.jrasmus.exception.UnauthorizedException;
 import hu.rkoszegi.jrasmus.model.AbstractEntity;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -471,4 +474,34 @@ public abstract class BaseHandler extends AbstractEntity {
     }
 
     public abstract void refreshToken();
+
+    protected void executeRequest(Request request) {
+        boolean isRequestInProgress = true;
+        int backoffIndex = 0;
+        Random rand = null;
+        while(isRequestInProgress) {
+            try {
+                request.makeRequest();
+                isRequestInProgress = false;
+            } catch (UnauthorizedException e) {
+                refreshToken();
+            } catch (ServiceUnavailableException e) {
+                System.out.println("Server error");
+                if(backoffIndex==4) {
+                    System.out.println("Nagyon server error");
+                    throw new RuntimeException("Service heavily unavailable");
+                }
+                if(rand == null) {
+                    rand = new Random();
+                }
+                long sleepTime = ((long) Math.pow(2, backoffIndex)) * 1000 + (rand.nextLong() % 1000);
+                System.out.println("Sleeping for: "+ sleepTime);
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException inex) {
+                    inex.printStackTrace();
+                }
+            }
+        }
+    }
 }

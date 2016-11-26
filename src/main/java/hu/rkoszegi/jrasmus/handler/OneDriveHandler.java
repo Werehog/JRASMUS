@@ -1,7 +1,8 @@
 package hu.rkoszegi.jrasmus.handler;
 
 import com.sun.deploy.net.URLEncoder;
-import com.sun.deploy.util.SyncAccess;
+import hu.rkoszegi.jrasmus.Request;
+import hu.rkoszegi.jrasmus.RequestType;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -15,7 +16,6 @@ import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 import java.io.*;
 import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.file.*;
 import java.util.Properties;
@@ -33,60 +33,27 @@ public class OneDriveHandler extends BaseHandler {
         this.propertyFileName = "/OneDrive.properties";
     }
 
-    //TODO: ujraauthentikalast megirni
     protected void getToken(String authCode, String clientId, String clientSecret) {
-        HttpsURLConnection connection = null;
-        try {
-            URL url = new URL("https://login.live.com/oauth20_token.srf");
-            connection = (HttpsURLConnection) url.openConnection();
+        Request r = new Request();
 
-            connection.setRequestMethod("POST");
+        r.setRequestUrl("https://login.live.com/oauth20_token.srf");
+        r.setRequestType(RequestType.POST);
+        String content = "client_id=" + clientId +
+                "&redirect_uri=https://login.live.com/oauth20_desktop.srf" +
+                "&client_secret=" + clientSecret +
+                "&code=" + authCode + "&grant_type=authorization_code";
+        r.setRequestData(content.getBytes());
 
-            String content = "client_id=" + clientId +
-                    "&redirect_uri=https://login.live.com/oauth20_desktop.srf" +
-                    "&client_secret=" + clientSecret +
-                    "&code=" + authCode + "&grant_type=authorization_code";
-
-            connection.setRequestProperty("Content-Length", Integer.toString(content.length()));
-
-            //Kellenek-e
-            connection.setUseCaches(false);
-            connection.setDoOutput(true);//Post vagy putnal kell ha akarunk adatot kuldeni
-            connection.setDoInput(true);//Kell ha a valaszbol olvasni akarunk
-
-            //Send request
-            DataOutputStream wr = new DataOutputStream (
-                    connection.getOutputStream());
-            wr.writeBytes(content);
-            wr.close();
-
-            JsonReader jSonReader = Json.createReader(connection.getInputStream());
-            JsonObject obj = jSonReader.readObject();
-
-            accessToken = obj.getString("access_token");
-
-            System.out.println("Access token: " + accessToken);
-
-            System.out.println("Size: " + accessToken.length());
+        r.setInputData(true);
+        executeRequest(r);
 
 
-            refreshToken = obj.getString("refresh_token");
-            System.out.println("Refresh token: " + refreshToken);
-            System.out.println("Size: " + refreshToken.length());
-            //Print response package header start
-            printAllResponseHeaders(connection);
+        ByteArrayInputStream bais = new ByteArrayInputStream(r.getResponseData());
+        JsonReader jSonReader = Json.createReader(bais);
+        JsonObject obj = jSonReader.readObject();
 
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            //openconn miatt
-            e.printStackTrace();
-        }
-        finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
+        accessToken = obj.getString("access_token");
+        refreshToken = obj.getString("refresh_token");
     }
 
     @Override
@@ -107,54 +74,28 @@ public class OneDriveHandler extends BaseHandler {
             e.printStackTrace();
             return;
         }
-        HttpsURLConnection connection = null;
-        try {
-            URL url = new URL("https://login.live.com/oauth20_token.srf");
-            connection = (HttpsURLConnection) url.openConnection();
 
-            connection.setRequestMethod("POST");
+        Request request = new Request();
+        request.setRequestUrl("https://login.live.com/oauth20_token.srf");
+        request.setRequestType(RequestType.POST);
 
-            String content = "client_id=" + clientId +
-                    "&redirect_uri=" + redirectUri +
-                    "&client_secret=" + clientSecret +
-                    "&refresh_token=" + refreshToken +
-                    "&grant_type=refresh_token";
+        String content = "client_id=" + clientId +
+                "&redirect_uri=" + redirectUri +
+                "&client_secret=" + clientSecret +
+                "&refresh_token=" + refreshToken +
+                "&grant_type=refresh_token";
+        request.setRequestData(content.getBytes());
+        request.addRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
-            connection.setRequestProperty("Content-Length", Integer.toString(content.length()));
-            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+        request.setInputData(true);
+        executeRequest(request);
 
-            //Kellenek-e
-            connection.setUseCaches(false);
-            connection.setDoOutput(true);//Post vagy putnal kell ha akarunk adatot kuldeni
-            connection.setDoInput(true);//Kell ha a valaszbol olvasni akarunk
+        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
+        JsonReader jSonReader = Json.createReader(bais);
+        JsonObject obj = jSonReader.readObject();
 
-            //Send request
-            DataOutputStream wr = new DataOutputStream (
-                    connection.getOutputStream());
-            wr.writeBytes(content);
-            wr.close();
-
-            JsonReader jSonReader = Json.createReader(connection.getInputStream());
-            JsonObject obj = jSonReader.readObject();
-
-            accessToken = obj.getString("access_token");
-
-            System.out.println("NEW Access token: " + accessToken);
-
-            //Print response package header start
-            printAllResponseHeaders(connection);
-
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            //openconn miatt
-            e.printStackTrace();
-        }
-        finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
+        accessToken = obj.getString("access_token");
+        System.out.println("NEW Access token: " + accessToken);
     }
 
     public void uploadFile(File file) {
@@ -167,49 +108,23 @@ public class OneDriveHandler extends BaseHandler {
 
     private void uploadSmallFile(File file) {
         System.out.println("uploadSmallFile called");
-        HttpsURLConnection connection = null;
+        Request request = new Request();
+        String uploadFileName= null;
         try {
-            String uploadFileName= replaceCharactersInFileName(file.getName());
-
-            URL url = new URL("https://api.onedrive.com/v1.0/drive/special/approot:/" + uploadFileName + ":/content");
-            connection = (HttpsURLConnection) url.openConnection();
-
-            connection.setRequestMethod("PUT");
-            connection.setRequestProperty("Content-Type", "text/plain");
-            connection.setRequestProperty("Authorization", "bearer " + accessToken);
-            connection.setDoOutput(true);
-
+            uploadFileName = URLEncoder.encode(file.getName(), "UTF-8");
+            request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + uploadFileName + ":/content");
+            request.setRequestType(RequestType.PUT);
+            request.addRequestHeader("Content-Type", "text/plain");
+            request.addRequestHeader("Authorization", "bearer " + accessToken);
             ByteArrayInputStream bais = new ByteArrayInputStream(Files.readAllBytes(file.toPath()));
             byte[] data = encryptToOutputStream(bais);
-            connection.setFixedLengthStreamingMode(data.length);
-
-            DataOutputStream wr = new DataOutputStream (
-                    connection.getOutputStream());
-            wr.write(data);
-
-            wr.close();
-
-
-            System.out.println(connection.getResponseCode());//ha nem hivom nem toltodik fel
-
-        } catch (MalformedURLException e) {
+            request.setRequestData(data);
+            executeRequest(request);
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         } catch (IOException e) {
-            //openconn miatt
             e.printStackTrace();
         }
-        finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-
-    private String replaceCharactersInFileName(String fileName) {
-        if(fileName.contains(" ")) {
-            fileName = fileName.replace(" ", "%20");
-        }
-        return fileName;
     }
 
     private void uploadLargeFile(File file) {
@@ -220,106 +135,24 @@ public class OneDriveHandler extends BaseHandler {
 
     private String createUploadSession(File file) {
         String uploadLink = null;
-        HttpsURLConnection createUploadConnection = null;
+        Request request = new Request();
         try {
-            //String uploadFileName= replaceCharactersInFileName(file.getName());
             String uploadFileName = URLEncoder.encode(file.getName(), "UTF-8");
+            request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + uploadFileName + ":/upload.createSession");
+            request.setRequestType(RequestType.POST);
+            request.addRequestHeader("Content-Type", "text/plain");
+            request.addRequestHeader("Authorization", "bearer " + accessToken);
+            request.setInputData(true);
 
-            URL url = new URL("https://api.onedrive.com/v1.0/drive/special/approot:/" + uploadFileName + ":/upload.createSession");
-            createUploadConnection = (HttpsURLConnection) url.openConnection();
+            executeRequest(request);
 
-            createUploadConnection.setRequestMethod("POST");
-            createUploadConnection.setRequestProperty("Content-Type", "text/plain");
-            createUploadConnection.setRequestProperty("Authorization", "bearer " + accessToken);
-            createUploadConnection.setDoInput(true);
-
-            //Content-Length helyett ez a ket sor
-            createUploadConnection.setDoOutput(true);
-            createUploadConnection.setFixedLengthStreamingMode(0);
-
-            uploadLink = getObjectFromJSONInput(createUploadConnection.getInputStream(), "uploadUrl");
-
-        } catch (MalformedURLException e) {
+            ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
+            uploadLink = getObjectFromJSONInput(bais, "uploadUrl");
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
-        } catch (IOException e) {
-            //openconn miatt
-            e.printStackTrace();
-        }
-        finally {
-            if (createUploadConnection != null) {
-                createUploadConnection.disconnect();
-            }
         }
         return uploadLink;
     }
-
-    /*private void uploadFragments(File file, String uploadLink) {
-        int totalFileSize = Math.toIntExact(file.length());
-        int encryptedFileSize = (totalFileSize / 16 + 1) * 16;
-        int packageNumber = ( encryptedFileSize / UPLOAD_PACKET_SIZE) + 1;
-        int uploadedBytesNr = 0;
-        int readBytesFromFile = 0;
-
-        final int readBytesNumberFromFile = (UPLOAD_PACKET_SIZE / 16 - 1) * 16;
-
-        try(FileInputStream fis = new FileInputStream(file)) {
-            for (int currentPacketNr = 0; currentPacketNr < packageNumber; currentPacketNr++) {
-                HttpsURLConnection connection = null;
-                try {
-                    URL url = new URL(uploadLink);
-                    connection = (HttpsURLConnection) url.openConnection();
-                    connection.setRequestMethod("PUT");
-                    connection.setRequestProperty("Authorization", "bearer " + accessToken);
-                    connection.setDoOutput(true);
-
-
-                    int packetSize;
-                    int startByteNumber = uploadedBytesNr;
-                    String rangeHeader;
-                    int readSize = 0;
-                    if (encryptedFileSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
-                        int endByteNumber = encryptedFileSize - 1;
-                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
-                        packetSize = encryptedFileSize - uploadedBytesNr;
-                        readSize = totalFileSize - readBytesFromFile;
-                    } else {
-                        int endByteNumber = startByteNumber + UPLOAD_PACKET_SIZE - 1;
-                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
-                        packetSize = UPLOAD_PACKET_SIZE;
-                        readSize = readBytesNumberFromFile;
-                    }
-                    connection.setRequestProperty("Content-Range", rangeHeader);
-                    connection.setFixedLengthStreamingMode(packetSize);
-
-                    byte[] buffer = new byte[readSize];
-                    fis.read(buffer, readBytesFromFile, readSize);
-                    ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
-                    byte[] data = encryptToOutputStream(bais);
-
-                    DataOutputStream wr = new DataOutputStream(
-                            connection.getOutputStream());
-                    wr.write(data);
-                    wr.close();
-
-                    readBytesFromFile += readSize;
-                    uploadedBytesNr += packetSize;
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    if (connection != null) {
-                        connection.disconnect();
-                    }
-                }
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        //TODO: utolso uzenetet olvasni
-    }*/
 
     protected void uploadFragments(File file, String uploadLink) {
         long totalFileSize = file.length();
@@ -327,85 +160,46 @@ public class OneDriveHandler extends BaseHandler {
         long packageNumber = ( encryptedFileSize / UPLOAD_PACKET_SIZE) + 1;
 
         int uploadedBytesNr = 0;
-        int readBytesFromFile = 0;
-
-        final long readBytesNumberFromFile = (UPLOAD_PACKET_SIZE / 16 - 1) * 16;
-
-        /*long packageNumber = (totalFileSize / readBytesNumberFromFile) + 1;
-        long lastEncodedChunkSize = ((totalFileSize % readBytesNumberFromFile) / 16 + 1) * 16;
-        long encryptedFileSize = packageNumber * UPLOAD_PACKET_SIZE + lastEncodedChunkSize;*/
-
-        System.out.println("total file size: " + totalFileSize);
-        System.out.println("encrypted file size: " + encryptedFileSize);
-        System.out.println("Package nr : " + packageNumber);
 
         try(CipherInputStream cis = new CipherInputStream(new FileInputStream(file), getEncryptorCipher())) {
             for (int currentPacketNr = 0; currentPacketNr < packageNumber; currentPacketNr++) {
                 System.out.println((currentPacketNr + 1) + "/" + packageNumber + " package");
-                HttpsURLConnection connection = null;
-                try {
-                    URL url = new URL(uploadLink);
-                    connection = (HttpsURLConnection) url.openConnection();
-                    connection.setRequestMethod("PUT");
-                    connection.setRequestProperty("Authorization", "bearer " + accessToken);
-                    connection.setDoOutput(true);
 
-                    //TEST
-                    connection.setDoInput(true);
+                Request request = new Request();
+                request.setRequestUrl(uploadLink);
+                request.setRequestType(RequestType.PUT);
+                request.addRequestHeader("Authorization", "bearer " + accessToken);
 
-
-                    int packetSize;
-                    int startByteNumber = uploadedBytesNr;
-                    String rangeHeader;
-                    int readSize = 0;
-                    if (encryptedFileSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
-                        long endByteNumber = encryptedFileSize - 1;
-                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
-                        packetSize =Math.toIntExact(encryptedFileSize - uploadedBytesNr);
-                        //readSize = Math.toIntExact(totalFileSize - readBytesFromFile);
-                    } else {
-                        long endByteNumber = startByteNumber + UPLOAD_PACKET_SIZE - 1;
-                        rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
-                        packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
-                        //readSize = Math.toIntExact(readBytesNumberFromFile);
-                    }
-                    connection.setRequestProperty("Content-Range", rangeHeader);
-                    connection.setFixedLengthStreamingMode(packetSize);
-
-                    byte[] data = new byte[packetSize];
-                    //int currread = cis.read(data, uploadedBytesNr, packetSize);
-                   /* ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
-                    byte[] data = encryptToOutputStream(bais);*/
-
-                   /* System.out.println(rangeHeader);
-                    System.out.println("Array size: " + data.length);
-                    System.out.println("Currently read: " + currread);*/
+                int packetSize;
+                int startByteNumber = uploadedBytesNr;
+                String rangeHeader;
+                if (encryptedFileSize - uploadedBytesNr < UPLOAD_PACKET_SIZE) {
+                    long endByteNumber = encryptedFileSize - 1;
+                    rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                    packetSize = Math.toIntExact(encryptedFileSize - uploadedBytesNr);
+                } else {
+                    long endByteNumber = startByteNumber + UPLOAD_PACKET_SIZE - 1;
+                    rangeHeader = "bytes " + startByteNumber + "-" + endByteNumber + "/" + encryptedFileSize;
+                    packetSize = Math.toIntExact(UPLOAD_PACKET_SIZE);
+                }
+                request.addRequestHeader("Content-Range", rangeHeader);
 
 
-                    DataOutputStream wr = new DataOutputStream(
-                            connection.getOutputStream());
+                try(ByteArrayOutputStream wr = new ByteArrayOutputStream()) {
 
-                    for(int i = 0; i < (packetSize / 8); i++) {
+                    for (int i = 0; i < (packetSize / 8); i++) {
                         byte[] b = new byte[8];
                         cis.read(b);
                         wr.write(b);
                     }
-                    //wr.write(data);
-                    wr.close();
-
-                    //readBytesFromFile += readSize;
-                    uploadedBytesNr += packetSize;
-
-                    System.out.println(connection.getResponseCode() + " " + connection.getResponseMessage());
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    if (connection != null) {
-                        connection.disconnect();
-                    }
+                    request.setRequestData(wr.toByteArray());
                 }
+
+                executeRequest(request);
+
+                uploadedBytesNr += packetSize;
             }
+
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -461,22 +255,16 @@ public class OneDriveHandler extends BaseHandler {
             e.printStackTrace();
         }
         String downloadLink = "https://api.onedrive.com/v1.0/drive/special/approot:/" + encodedFileName + ":/content";
-        HttpsURLConnection connection = null;
-        try {
-            URL url = new URL(downloadLink);
-            connection = (HttpsURLConnection) url.openConnection();
 
-            connection.setDoOutput(true);
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Authorization", "bearer " + accessToken);
+        Request request = new Request();
+        request.setRequestUrl(downloadLink);
+        request.setRequestType(RequestType.GET);
+        request.addRequestHeader("Authorization", "bearer " + accessToken);
 
-            String location = connection.getHeaderField("Content-Location");
-            return location;
+        executeRequest(request);
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+        String location = request.getResponseHeader("Content-Location");
+        return location;
     }
 
     private void downloadContent(String location, String fileName) {
@@ -484,16 +272,13 @@ public class OneDriveHandler extends BaseHandler {
 
         Cipher cipher = getDecryptorCipher();
         try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(fileName)), cipher)) {
-            URL url = new URL(location);
-
-            //FileOutputStream fileOutputStream = new FileOutputStream(new File(fileName));
-            fileSize = downloadFirstPart(url, fileSize, cos);
+            fileSize = downloadFirstPart(location, fileSize, cos);
 
             if(fileSize > DOWNLOAD_PACKET_SIZE) {
                 int downloadedByteNr = DOWNLOAD_PACKET_SIZE;
 
                 while(downloadedByteNr < fileSize) {
-                   downloadedByteNr = downloadNextPart(url, downloadedByteNr, cos);
+                   downloadedByteNr = downloadNextPart(location, downloadedByteNr, cos);
                 }
             }
 
@@ -502,130 +287,86 @@ public class OneDriveHandler extends BaseHandler {
         }
     }
 
-    private int downloadFirstPart(URL url, int fileSize, CipherOutputStream cipherOutputStream) throws IOException {
-        HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+    private int downloadFirstPart(String url, int fileSize, CipherOutputStream cipherOutputStream) {
+        Request request = new Request();
+        request.setRequestUrl(url);
+        request.setRequestType(RequestType.GET);
+        request.addRequestHeader("Range", "bytes=0-" + Integer.toString(DOWNLOAD_PACKET_SIZE - 1));
+        request.setInputData(true);
 
-        connection.setDoOutput(true);
-        connection.setRequestMethod("GET");
-        connection.setRequestProperty("Range", "bytes=0-" + Integer.toString(DOWNLOAD_PACKET_SIZE - 1));
+        executeRequest(request);
 
-        String contentRange = connection.getHeaderField("Content-Range");
+        String contentRange = request.getResponseHeader("Content-Range");
         fileSize = Integer.parseInt(contentRange.substring(contentRange.indexOf("/") + 1));
-
-        InputStream inputStream = connection.getInputStream();
-        decryptToOutputStream(cipherOutputStream, inputStream);
-        inputStream.close();
-
+        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
+        decryptToOutputStream(cipherOutputStream, bais);
         return fileSize;
     }
 
-    private int downloadNextPart(URL url, int downloadedByteNr, CipherOutputStream cipherOutputStream) {
-        HttpsURLConnection connection = null;
-        try {
-            connection = (HttpsURLConnection) url.openConnection();
-            connection.setDoOutput(true);
-            connection.setRequestMethod("GET");
-            int endByteNumber = downloadedByteNr + DOWNLOAD_PACKET_SIZE - 1;
-            connection.setRequestProperty("Range", "bytes=" + downloadedByteNr + "-" + endByteNumber);
+    private int downloadNextPart(String url, int downloadedByteNr, CipherOutputStream cipherOutputStream) {
+        Request request = new Request();
+        request.setRequestUrl(url);
+        request.setRequestType(RequestType.GET);
+        int endByteNumber = downloadedByteNr + DOWNLOAD_PACKET_SIZE - 1;
+        request.addRequestHeader("Range", "bytes=" + downloadedByteNr + "-" + endByteNumber);
+        request.setInputData(true);
 
-            int contentLength = connection.getContentLength();
-            InputStream inputStream = connection.getInputStream();
-            decryptToOutputStream(cipherOutputStream, inputStream);
-            inputStream.close();
+        executeRequest(request);
 
-             return downloadedByteNr + contentLength;
+        int contentLength = Integer.parseInt(request.getResponseHeader("Content-Length"));
+        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
+        decryptToOutputStream(cipherOutputStream, bais);
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return downloadedByteNr;
+        return downloadedByteNr + contentLength;
     }
-    
 
     public void listFolder() {
-        HttpsURLConnection connection = null;
-        try {
-            URL url = new URL("https://api.onedrive.com/v1.0/drive/special/approot/children");
-            connection = (HttpsURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Authorization", "bearer " + accessToken);
+        Request request = new Request();
+        request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot/children");
+        request.setRequestType(RequestType.GET);
+        request.addRequestHeader("Authorization", "bearer " + accessToken);
 
-            JsonReader jsonReader = Json.createReader(connection.getInputStream());
-            JsonObject jsonObject = jsonReader.readObject();
-            JsonArray array = jsonObject.getJsonArray("value");
-            for(int i=0; i<array.size(); i++) {
-                JsonObject object = array.getJsonObject(i);
-                String out = "Name: " + object.getString("name");
-                if(object.containsKey("folder")) {
-                    out += " (folder)";
-                }
-                System.out.println(out);
-            }
+        request.setInputData(true);
+        executeRequest(request);
 
-        } catch (ProtocolException e) {
-            e.printStackTrace();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if(connection != null) {
-                connection.disconnect();
+        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
+        JsonReader jsonReader = Json.createReader(bais);
+        JsonObject jsonObject = jsonReader.readObject();
+        JsonArray array = jsonObject.getJsonArray("value");
+        for(int i=0; i<array.size(); i++) {
+            JsonObject object = array.getJsonObject(i);
+            String out = "Name: " + object.getString("name");
+            if (object.containsKey("folder")) {
+                out += " (folder)";
             }
+            System.out.println(out);
         }
-
         //TODO: nextlink ha 200nal tobb van
     }
 
     public void deleteFile(String fileName) {
-        HttpsURLConnection connection = null;
-        try {
-            URL url = new URL("https://api.onedrive.com/v1.0/drive/special/approot:/" + fileName);
-            connection = (HttpsURLConnection) url.openConnection();
-            connection.setRequestMethod("DELETE");
-            connection.setRequestProperty("Authorization", "bearer " + accessToken);
-
-            connection.getResponseCode();//ha nincs response code, akkor nem hajtodik vegre
-
-        } catch (ProtocolException e) {
-            e.printStackTrace();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if(connection != null) {
-                connection.disconnect();
-            }
-        }
+        Request request = new Request();
+        request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + fileName);
+        request.setRequestType(RequestType.DELETE);
+        request.addRequestHeader("Authorization", "bearer " + accessToken);
+        executeRequest(request);
     }
 
     public void setDriveMetaData() {
-        HttpsURLConnection connection = null;
-        try {
-            URL url = new URL("https://api.onedrive.com/v1.0/drive");
-            connection = (HttpsURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Authorization", "bearer " + accessToken);
-            connection.setDoInput(true);
+        Request request = new Request();
+        request.setRequestUrl("https://api.onedrive.com/v1.0/drive");
+        request.setRequestType(RequestType.GET);
+        request.addRequestHeader("Authorization", "bearer " + accessToken);
 
-            JsonReader jSonReader = Json.createReader(connection.getInputStream());
-            JsonObject rootObject = jSonReader.readObject();
-            JsonObject qoutaObject = rootObject.getJsonObject("quota");
+        request.setInputData(true);
+        executeRequest(request);
 
-            this.setTotalSize(qoutaObject.getJsonNumber("total").longValueExact());
-            this.setFreeSize(qoutaObject.getJsonNumber("remaining").longValueExact());
-        } catch (ProtocolException e) {
-            e.printStackTrace();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if(connection != null) {
-                connection.disconnect();
-            }
-        }
+        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
+        JsonReader jSonReader = Json.createReader(bais);
+        JsonObject rootObject = jSonReader.readObject();
+        JsonObject qoutaObject = rootObject.getJsonObject("quota");
+
+        this.setTotalSize(qoutaObject.getJsonNumber("total").longValueExact());
+        this.setFreeSize(qoutaObject.getJsonNumber("remaining").longValueExact());
     }
 }
