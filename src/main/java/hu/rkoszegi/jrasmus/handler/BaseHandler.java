@@ -87,7 +87,11 @@ public abstract class BaseHandler extends AbstractEntity {
         WebLogin login = new WebLogin(url, "code=");
         login.showAndWait();
 
-        getToken(login.getAuthCode(), clientId, clientSecret);
+        String authCode = login.getAuthCode();
+
+        if(authCode != null && !"".equals(authCode)) {
+            getToken(login.getAuthCode(), clientId, clientSecret);
+        }
     }
 
     //TODO:abstract
