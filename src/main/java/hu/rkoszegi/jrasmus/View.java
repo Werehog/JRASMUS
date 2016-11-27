@@ -7,8 +7,6 @@ import hu.rkoszegi.jrasmus.handler.BaseHandler;
 import hu.rkoszegi.jrasmus.handler.GoogleDriveHandler;
 import hu.rkoszegi.jrasmus.handler.OneDriveHandler;
 import hu.rkoszegi.jrasmus.model.StoredFile;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -346,7 +344,7 @@ public class View {
 
                 Optional<String> result = textInputDialog.showAndWait();
                 if (result.isPresent()) {
-                    googleDriveHandler.downloaFile(result.get());
+                    googleDriveHandler.downloadFile(result.get());
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Download finished!");
                     alert.setHeaderText("File downloaded from GoogleDrive!");

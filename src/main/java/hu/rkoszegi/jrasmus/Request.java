@@ -5,8 +5,6 @@ import hu.rkoszegi.jrasmus.exception.UnauthorizedException;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -129,8 +127,6 @@ public class Request {
             //printAllResponseHeaders(connection);
 
             if(isResponseData) {
-                int responseSize = Integer.parseInt(connection.getHeaderField("Content-Length"));
-                responseData = new byte[responseSize];
                 InputStream is = connection.getInputStream();
                 try(ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                     byte[] buffer = new byte[2048];
@@ -160,7 +156,11 @@ public class Request {
         return responseHeaders.get(key).get(0);
     }
 
-    protected void printAllResponseHeaders(HttpsURLConnection connection) throws IOException {
+    public ByteArrayInputStream getResponseStream() {
+        return new ByteArrayInputStream(responseData);
+    }
+
+    private void printAllResponseHeaders(HttpsURLConnection connection) throws IOException {
         StringBuilder builder = new StringBuilder();
         builder.append(connection.getResponseCode())
                 .append(" ")
