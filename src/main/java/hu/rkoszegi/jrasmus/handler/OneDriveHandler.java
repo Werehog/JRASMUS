@@ -31,9 +31,11 @@ public class OneDriveHandler extends BaseHandler {
 
     public OneDriveHandler() {
         this.propertyFileName = "/OneDrive.properties";
+        connectionTestLink = "www.onedrive.live.com";
     }
 
-    protected void getToken(String authCode, String clientId, String clientSecret) {
+    @Override
+    protected void getTokenImpl(String authCode, String clientId, String clientSecret) {
         Request r = new Request();
 
         r.setRequestUrl("https://login.live.com/oauth20_token.srf");
@@ -57,7 +59,7 @@ public class OneDriveHandler extends BaseHandler {
     }
 
     @Override
-    public void refreshToken() {
+    protected void refreshTokenImpl() {
         System.out.println("refreshToken called");
         System.out.println("Old access token: " + accessToken);
 
@@ -98,15 +100,8 @@ public class OneDriveHandler extends BaseHandler {
         System.out.println("NEW Access token: " + accessToken);
     }
 
-    public void uploadFile(File file) {
-        if(file.length() < 10000000) {
-            uploadSmallFile(file);
-        } else {
-            uploadLargeFile(file);
-        }
-    }
-
-    private void uploadSmallFile(File file) {
+    @Override
+    protected void uploadSmallFile(File file) {
         System.out.println("uploadSmallFile called");
         Request request = new Request();
         String uploadFileName= null;
@@ -127,7 +122,8 @@ public class OneDriveHandler extends BaseHandler {
         }
     }
 
-    private void uploadLargeFile(File file) {
+    @Override
+    protected void uploadLargeFile(File file) {
         System.out.println("uploadLargeFile called");
         String uploadLink = createUploadSession(file);
         uploadFragments(file, uploadLink);
@@ -239,9 +235,8 @@ public class OneDriveHandler extends BaseHandler {
         }
     }
 
-
-    //FIle nevet convertalni itt es deletnel
-    public void downloadFile(String fileName) {
+    @Override
+    protected void downloadFileImpl(String fileName) {
         System.out.println("downloadFile called");
         String downloadUrl = getDownloadUrl(fileName);
         downloadContent(downloadUrl, fileName);
@@ -320,7 +315,8 @@ public class OneDriveHandler extends BaseHandler {
         return downloadedByteNr + contentLength;
     }
 
-    public void listFolder() {
+    @Override
+    protected void listFolderImpl() {
         Request request = new Request();
         request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot/children");
         request.setRequestType(RequestType.GET);
@@ -344,7 +340,8 @@ public class OneDriveHandler extends BaseHandler {
         //TODO: nextlink ha 200nal tobb van
     }
 
-    public void deleteFile(String fileName) {
+    @Override
+    protected void deleteFileImpl(String fileName) {
         Request request = new Request();
         request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + fileName);
         request.setRequestType(RequestType.DELETE);
@@ -352,7 +349,8 @@ public class OneDriveHandler extends BaseHandler {
         executeRequest(request);
     }
 
-    public void setDriveMetaData() {
+    @Override
+    protected void setDriveMetaDataImpl() {
         Request request = new Request();
         request.setRequestUrl("https://api.onedrive.com/v1.0/drive");
         request.setRequestType(RequestType.GET);

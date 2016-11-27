@@ -3,6 +3,7 @@ package hu.rkoszegi.jrasmus.handler;
 import hu.rkoszegi.jrasmus.Request;
 import hu.rkoszegi.jrasmus.crypto.KeyManager;
 import hu.rkoszegi.jrasmus.WebLogin;
+import hu.rkoszegi.jrasmus.exception.HostUnavailableException;
 import hu.rkoszegi.jrasmus.exception.ServiceUnavailableException;
 import hu.rkoszegi.jrasmus.exception.UnauthorizedException;
 import hu.rkoszegi.jrasmus.model.AbstractEntity;
@@ -18,6 +19,8 @@ import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.persistence.*;
 import java.io.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -49,15 +52,18 @@ public abstract class BaseHandler extends AbstractEntity {
     @Transient
     protected String bearer;
 
+    @Transient
+    protected String connectionTestLink;
+
     public BaseHandler() {
         idProperty = new SimpleStringProperty();
         freeSizeProperty = new SimpleStringProperty();
         totalSizeProperty = new SimpleStringProperty();
     }
 
-    public abstract void setDriveMetaData();
-
     public void login() {
+        checkInternetConnection();
+
         Properties properties = new Properties();
         String clientId = null;
         String clientSecret = null;
@@ -95,8 +101,60 @@ public abstract class BaseHandler extends AbstractEntity {
         }
     }
 
-    //TODO:abstract
-    protected void getToken(String authCode, String clientId, String clientSecret) {}
+    protected void getToken(String authCode, String clientId, String clientSecret) {
+        checkInternetConnection();
+        getTokenImpl(authCode, clientId, clientSecret);
+    }
+
+    protected abstract void getTokenImpl(String authCode, String clientId, String clientSecret);
+
+    public void refreshToken() {
+        checkInternetConnection();
+        refreshTokenImpl();
+    }
+
+    protected abstract void refreshTokenImpl();
+
+    public void setDriveMetaData() {
+        checkInternetConnection();
+        setDriveMetaDataImpl();
+    }
+
+    protected abstract void setDriveMetaDataImpl();
+
+    public void uploadFile(File file) {
+        checkInternetConnection();
+        if(file.length() < 10000000) {
+            uploadSmallFile(file);
+        } else {
+            uploadLargeFile(file);
+        }
+    }
+
+    protected abstract void uploadSmallFile(File file);
+
+    protected abstract void uploadLargeFile(File file);
+
+    public void downloadFile(String fileName) {
+        checkInternetConnection();
+        downloadFileImpl(fileName);
+    }
+
+    protected abstract void downloadFileImpl(String fileName);
+
+    public void listFolder () {
+        checkInternetConnection();
+        listFolderImpl();
+    }
+
+    protected abstract void listFolderImpl();
+
+    public void deleteFile(String fileName) {
+        checkInternetConnection();
+        deleteFileImpl(fileName);
+    }
+
+    protected abstract void deleteFileImpl(String fileName);
 
     protected String getObjectFromJSONInput(InputStream inputStream, String name) {
         JsonReader jSonReader = Json.createReader(inputStream);
@@ -221,8 +279,6 @@ public abstract class BaseHandler extends AbstractEntity {
         this.idProperty.set(Long.toString(id));
     }
 
-    public abstract void refreshToken();
-
     protected void executeRequest(Request request) {
         boolean isRequestInProgress = true;
         int backoffIndex = 0;
@@ -251,6 +307,20 @@ public abstract class BaseHandler extends AbstractEntity {
                 }
                 backoffIndex++;
             }
+        }
+    }
+
+    private void checkInternetConnection() {
+        boolean available;
+        try {
+            available = InetAddress.getByName(connectionTestLink).isReachable(1000);
+        } catch (IOException e) {
+            HostUnavailableException hostUnavailableException = new HostUnavailableException("Host is unavailable");
+            hostUnavailableException.initCause(e);
+            throw hostUnavailableException;
+        }
+        if(!available) {
+            throw new HostUnavailableException("Host is unavailable");
         }
     }
 }

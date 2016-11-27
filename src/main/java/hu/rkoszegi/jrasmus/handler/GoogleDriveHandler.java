@@ -28,9 +28,11 @@ public class GoogleDriveHandler extends BaseHandler {
 
     public GoogleDriveHandler() {
         this.propertyFileName = "/GoogleDrive.properties";
+        connectionTestLink = "www.drive.google.com";
     }
 
-    protected void getToken(String authCode, String clientId, String clientSecret) {
+    @Override
+    protected void getTokenImpl(String authCode, String clientId, String clientSecret) {
         Request request = new Request();
         request.setRequestUrl("https://www.googleapis.com/oauth2/v4/token");
         request.setRequestType(RequestType.POST);
@@ -52,7 +54,8 @@ public class GoogleDriveHandler extends BaseHandler {
         refreshToken = obj.getString("refresh_token");
     }
 
-    public void uploadSmallFile(File file) {
+    @Override
+    protected void uploadSmallFile(File file) {
         System.out.println("uploadSmallFile called");
         String boundary = "foo_bar_baz";
         Request request = new Request();
@@ -86,8 +89,8 @@ public class GoogleDriveHandler extends BaseHandler {
         }
     }
 
-
-    public void uploadLargeFile(File file) {
+    @Override
+    protected void uploadLargeFile(File file) {
         System.out.println("uploadLargeFile called");
         String uploadLink = createUploadSession(file);
         System.out.println(uploadLink);
@@ -180,7 +183,7 @@ public class GoogleDriveHandler extends BaseHandler {
 
 
     @Override
-    public void refreshToken() {
+    protected void refreshTokenImpl() {
         System.out.println("refreshToken called");
         System.out.println("Old access token: " + accessToken);
 
@@ -217,8 +220,8 @@ public class GoogleDriveHandler extends BaseHandler {
         System.out.println("NEW Access token: " + accessToken);
     }
 
-
-    public void listFolder() {
+    @Override
+    protected void listFolderImpl() {
         Request request = new Request();
         request.setRequestUrl("https://www.googleapis.com/drive/v2/files");
         request.setRequestType(RequestType.GET);
@@ -241,8 +244,8 @@ public class GoogleDriveHandler extends BaseHandler {
         //TODO: nextPageToken amig van még ahonnen ez jött
     }
 
-
-    public void downloadFile(String fileName) {
+    @Override
+    protected void downloadFileImpl(String fileName) {
         GDriveFile gDriveFile = getStoredFileData(fileName);
         if(gDriveFile.getSize() > MAX_SMALL_FILE_SIZE) {
             downloadLargeFile(gDriveFile);
@@ -352,8 +355,8 @@ public class GoogleDriveHandler extends BaseHandler {
         }
     }
 
-
-    public void deleteFile(String fileName) {
+    @Override
+    protected void deleteFileImpl(String fileName) {
         GDriveFile gDriveFile = getStoredFileData(fileName);
         Request request = new Request();
         request.setRequestUrl("https://www.googleapis.com/drive/v3/files/" + gDriveFile.getId());
@@ -362,7 +365,8 @@ public class GoogleDriveHandler extends BaseHandler {
         executeRequest(request);
     }
 
-    public void setDriveMetaData() {
+    @Override
+    protected void setDriveMetaDataImpl() {
         Request request = new Request();
         request.setRequestUrl("https://www.googleapis.com/drive/v2/about");
         request.setRequestType(RequestType.GET);

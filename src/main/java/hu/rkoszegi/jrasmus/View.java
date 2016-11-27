@@ -3,6 +3,7 @@ package hu.rkoszegi.jrasmus;
 import hu.rkoszegi.jrasmus.crypto.KeyManager;
 import hu.rkoszegi.jrasmus.dao.HandlerDAO;
 import hu.rkoszegi.jrasmus.dao.StoredFileDAO;
+import hu.rkoszegi.jrasmus.exception.HostUnavailableException;
 import hu.rkoszegi.jrasmus.handler.BaseHandler;
 import hu.rkoszegi.jrasmus.handler.GoogleDriveHandler;
 import hu.rkoszegi.jrasmus.handler.OneDriveHandler;
@@ -21,6 +22,9 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.rmi.UnknownHostException;
 import java.util.*;
 
 /**
@@ -69,8 +73,8 @@ public class View {
 
 
     //TODO: testing
-    OneDriveHandler oneDriveHandler;
-    GoogleDriveHandler googleDriveHandler;
+    BaseHandler oneDriveHandler;
+    BaseHandler googleDriveHandler;
     HandlerDAO handlerDAO;
 
 
@@ -78,7 +82,7 @@ public class View {
     private ListView<String> listBoxMain;
 
     //<Files Tab>
-    private ObservableList<StoredFile> storedFileList =  FXCollections.observableArrayList();
+    private ObservableList<StoredFile> storedFileList = FXCollections.observableArrayList();
 
     @FXML
     private TableView<StoredFile> filesTable;
@@ -93,7 +97,7 @@ public class View {
     //</Files Tab>
 
     //<Providers Tab>
-    private ObservableList<BaseHandler> handlerList =  FXCollections.observableArrayList();
+    private ObservableList<BaseHandler> handlerList = FXCollections.observableArrayList();
 
     @FXML
     private TableView<BaseHandler> handlersTable;
@@ -193,6 +197,13 @@ public class View {
         initDebugTab();
     }
 
+    private void showHostUnavailableAlert() {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Host unavailable!");
+        alert.setHeaderText("Can not connect to host. Please check the internet connection!");
+        alert.showAndWait();
+    }
+
     private void initDebugTab() {
         oneDriveHandler = new OneDriveHandler();
 
@@ -202,7 +213,11 @@ public class View {
         loginButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                oneDriveHandler.login();
+                try {
+                    oneDriveHandler.login();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
             }
         });
 
@@ -210,13 +225,17 @@ public class View {
         uploadButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                FileChooser fileChooser = new FileChooser();
-                File file = fileChooser.showOpenDialog(rootLayout.getScene().getWindow());
-                oneDriveHandler.uploadFile(file);
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Upload finished!");
-                alert.setHeaderText("File uploaded to OneDrive!");
-                alert.showAndWait();
+                try {
+                    FileChooser fileChooser = new FileChooser();
+                    File file = fileChooser.showOpenDialog(rootLayout.getScene().getWindow());
+                    oneDriveHandler.uploadFile(file);
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Upload finished!");
+                    alert.setHeaderText("File uploaded to OneDrive!");
+                    alert.showAndWait();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
             }
         });
 
@@ -230,11 +249,15 @@ public class View {
 
                 Optional<String> result = textInputDialog.showAndWait();
                 if (result.isPresent()) {
-                    oneDriveHandler.downloadFile(result.get());
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("Download finished!");
-                    alert.setHeaderText("File downloaded from OneDrive!");
-                    alert.showAndWait();
+                    try {
+                        oneDriveHandler.downloadFile(result.get());
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("Download finished!");
+                        alert.setHeaderText("File downloaded from OneDrive!");
+                        alert.showAndWait();
+                    } catch (HostUnavailableException e) {
+                        showHostUnavailableAlert();
+                    }
                 }
             }
         });
@@ -243,12 +266,16 @@ public class View {
         listButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                oneDriveHandler.listFolder();
+                try {
+                    oneDriveHandler.listFolder();
 
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("List finished!");
-                alert.setHeaderText("Listing finished from OneDrive!");
-                alert.showAndWait();
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("List finished!");
+                    alert.setHeaderText("Listing finished from OneDrive!");
+                    alert.showAndWait();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
             }
         });
 
@@ -262,12 +289,16 @@ public class View {
 
                 Optional<String> result = textInputDialog.showAndWait();
                 if (result.isPresent()) {
-                    oneDriveHandler.deleteFile(result.get());
+                    try {
+                        oneDriveHandler.deleteFile(result.get());
 
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("File deleted!");
-                    alert.setHeaderText("Deleting from OneDrive finished!");
-                    alert.showAndWait();
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("File deleted!");
+                        alert.setHeaderText("Deleting from OneDrive finished!");
+                        alert.showAndWait();
+                    } catch (HostUnavailableException e) {
+                        showHostUnavailableAlert();
+                    }
                 }
             }
         });
@@ -276,7 +307,11 @@ public class View {
         refreshOdrButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                oneDriveHandler.refreshToken();
+                try {
+                    oneDriveHandler.refreshToken();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
             }
         });
 
@@ -286,7 +321,11 @@ public class View {
         GDLoginButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                googleDriveHandler.login();
+                try {
+                    googleDriveHandler.login();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
             }
         });
 
@@ -294,7 +333,11 @@ public class View {
         refreshGDButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                googleDriveHandler.refreshToken();
+                try {
+                    googleDriveHandler.refreshToken();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
             }
         });
 
@@ -302,27 +345,17 @@ public class View {
         gDriveUploadButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                FileChooser fileChooser = new FileChooser();
-                File file = fileChooser.showOpenDialog(rootLayout.getScene().getWindow());
-                googleDriveHandler.uploadSmallFile(file);
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Upload finished!");
-                alert.setHeaderText("File uploaded to GoogleDrive!");
-                alert.showAndWait();
-            }
-        });
-
-        Button gDriveUploadBIGButton = new Button("UploadBIG to GoogleDrive");
-        gDriveUploadBIGButton.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                FileChooser fileChooser = new FileChooser();
-                File file = fileChooser.showOpenDialog(rootLayout.getScene().getWindow());
-                googleDriveHandler.uploadLargeFile(file);
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Upload finished!");
-                alert.setHeaderText("File uploaded to GoogleDrive!");
-                alert.showAndWait();
+                try {
+                    FileChooser fileChooser = new FileChooser();
+                    File file = fileChooser.showOpenDialog(rootLayout.getScene().getWindow());
+                    googleDriveHandler.uploadFile(file);
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Upload finished!");
+                    alert.setHeaderText("File uploaded to GoogleDrive!");
+                    alert.showAndWait();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
             }
         });
 
@@ -330,7 +363,11 @@ public class View {
         gDriveListFilesButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                googleDriveHandler.listFolder();
+                try {
+                    googleDriveHandler.listFolder();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
             }
         });
 
@@ -344,11 +381,15 @@ public class View {
 
                 Optional<String> result = textInputDialog.showAndWait();
                 if (result.isPresent()) {
-                    googleDriveHandler.downloadFile(result.get());
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("Download finished!");
-                    alert.setHeaderText("File downloaded from GoogleDrive!");
-                    alert.showAndWait();
+                    try {
+                        googleDriveHandler.downloadFile(result.get());
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("Download finished!");
+                        alert.setHeaderText("File downloaded from GoogleDrive!");
+                        alert.showAndWait();
+                    } catch (HostUnavailableException e) {
+                        showHostUnavailableAlert();
+                    }
                 }
             }
         });
@@ -363,11 +404,15 @@ public class View {
 
                 Optional<String> result = textInputDialog.showAndWait();
                 if (result.isPresent()) {
-                    googleDriveHandler.deleteFile(result.get());
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("Delete finished!");
-                    alert.setHeaderText("File deleted from GoogleDrive!");
-                    alert.showAndWait();
+                    try {
+                        googleDriveHandler.deleteFile(result.get());
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("Delete finished!");
+                        alert.setHeaderText("File deleted from GoogleDrive!");
+                        alert.showAndWait();
+                    } catch (HostUnavailableException e) {
+                        showHostUnavailableAlert();
+                    }
                 }
             }
         });
@@ -391,7 +436,7 @@ public class View {
 
                 FileChooser fileChooser = new FileChooser();
                 File file = fileChooser.showOpenDialog(rootLayout.getScene().getWindow());
-                CryptoTest.decryptSuchFile(KeyManager.getKey(),file);
+                CryptoTest.decryptSuchFile(KeyManager.getKey(), file);
             }
         });
 
@@ -399,14 +444,15 @@ public class View {
         getOdrMetaButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-
-                oneDriveHandler.setDriveMetaData();
-
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Test finished!");
-                alert.setHeaderText("Such test much wow!");
-                alert.showAndWait();
-
+                try {
+                    oneDriveHandler.setDriveMetaData();
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Test finished!");
+                    alert.setHeaderText("Such test much wow!");
+                    alert.showAndWait();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
             }
         });
 
@@ -414,21 +460,53 @@ public class View {
         getGdrMetaButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
+                try {
+                    googleDriveHandler.setDriveMetaData();
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Test finished!");
+                    alert.setHeaderText("Such test much wow!");
+                    alert.showAndWait();
+                } catch (HostUnavailableException e) {
+                    showHostUnavailableAlert();
+                }
+            }
+        });
 
-                googleDriveHandler.setDriveMetaData();
+        Button connectionTest = new Button("connectionTest");
+        connectionTest.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                boolean odrAvailable;
+                try {
+                    odrAvailable = InetAddress.getByName("www.onedrive.live.com").isReachable(1000);
 
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Test finished!");
-                alert.setHeaderText("Such test much wow!");
-                alert.showAndWait();
+                } catch (java.net.UnknownHostException e) {
+                    e.printStackTrace();
+                    odrAvailable = false;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    odrAvailable = false;
+                }
+                boolean gdrAvailable;
+                try {
+                    gdrAvailable = InetAddress.getByName("www.drive.google.com").isReachable(1000);
+                } catch (java.net.UnknownHostException e) {
+                    e.printStackTrace();
+                    gdrAvailable = false;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    gdrAvailable = false;
+                }
+                System.out.println("ODR: " + odrAvailable);
+                System.out.println("GDH: " + gdrAvailable);
 
             }
         });
 
 
         FlowPane flowPane = new FlowPane(loginButton, uploadButton, downloadButton, listButton, deleteButton, refreshOdrButton,
-                GDLoginButton, refreshGDButton, gDriveUploadButton, gDriveUploadBIGButton, gDriveListFilesButton, gDriveDownloadButton, gDriveDeleteButton,
-                criptoTestButton, getOdrMetaButton, getGdrMetaButton);
+                GDLoginButton, refreshGDButton, gDriveUploadButton, gDriveListFilesButton, gDriveDownloadButton, gDriveDeleteButton,
+                criptoTestButton, getOdrMetaButton, getGdrMetaButton, connectionTest);
         Tab tab = new Tab("Test");
         tab.setContent(flowPane);
         tabPane.getTabs().add(tab);
