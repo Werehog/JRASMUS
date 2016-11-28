@@ -49,8 +49,6 @@ public abstract class BaseHandler extends AbstractEntity {
 
     @Transient
     protected String propertyFileName;
-    @Transient
-    protected String bearer;
 
     @Transient
     protected String connectionTestLink;
@@ -77,7 +75,6 @@ public abstract class BaseHandler extends AbstractEntity {
             loginUrl = properties.getProperty("loginUrl");
             redirectUri = properties.getProperty("redirectUri");
             scope = properties.getProperty("scope");
-            bearer = properties.getProperty("bearer");
         } catch (IOException e) {
             e.printStackTrace();
             return;
