@@ -8,10 +8,7 @@ import hu.rkoszegi.jrasmus.model.GDriveFile;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
+import javax.json.*;
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 import java.io.*;
@@ -76,12 +73,12 @@ public class GoogleDriveHandler extends BaseHandler {
 
         try(FileInputStream fis = new FileInputStream(file)){
             byte[] data = encryptToOutputStream(fis);
-            request.setRequestData(data);
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             outputStream.write(builder.toString().getBytes());
             outputStream.write(data);
             outputStream.write(lastBoundary.getBytes());
+            request.setRequestData(outputStream.toByteArray());
 
             executeRequest(request);
         } catch (IOException e) {
@@ -223,7 +220,7 @@ public class GoogleDriveHandler extends BaseHandler {
     @Override
     protected void listFolderImpl() {
         Request request = new Request();
-        request.setRequestUrl("https://www.googleapis.com/drive/v2/files");
+        request.setRequestUrl("https://www.googleapis.com/drive/v3/files");
         request.setRequestType(RequestType.GET);
         request.addRequestHeader("Authorization", "Bearer " + accessToken);
         request.setInputData(true);
@@ -232,10 +229,10 @@ public class GoogleDriveHandler extends BaseHandler {
 
         JsonReader jsonReader = Json.createReader(request.getResponseStream());
         JsonObject jsonObject = jsonReader.readObject();
-        JsonArray array = jsonObject.getJsonArray("items");
+        JsonArray array = jsonObject.getJsonArray("files");
         for(int i=0; i<array.size(); i++) {
             JsonObject object = array.getJsonObject(i);
-            String out = "Name: " + object.getString("title");
+            String out = "Name: " + object.getString("name");
                 /*if(object.containsKey("folder")) {
                     out += " (folder)";
                 }*/

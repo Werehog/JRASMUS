@@ -15,7 +15,6 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 import java.io.*;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.*;
 import java.util.Properties;
@@ -49,9 +48,7 @@ public class OneDriveHandler extends BaseHandler {
         r.setInputData(true);
         executeRequest(r);
 
-
-        ByteArrayInputStream bais = new ByteArrayInputStream(r.getResponseData());
-        JsonReader jSonReader = Json.createReader(bais);
+        JsonReader jSonReader = Json.createReader(r.getResponseStream());
         JsonObject obj = jSonReader.readObject();
 
         accessToken = obj.getString("access_token");
@@ -64,9 +61,9 @@ public class OneDriveHandler extends BaseHandler {
         System.out.println("Old access token: " + accessToken);
 
         Properties properties = new Properties();
-        String clientId = null;
-        String clientSecret = null;
-        String redirectUri = null;
+        String clientId;
+        String clientSecret;
+        String redirectUri;
         try(InputStream propertyInputStream = BaseHandler.class.getResourceAsStream( propertyFileName)){
             properties.load(propertyInputStream);
             clientId = properties.getProperty("clientId");
@@ -92,8 +89,7 @@ public class OneDriveHandler extends BaseHandler {
         request.setInputData(true);
         executeRequest(request);
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
-        JsonReader jSonReader = Json.createReader(bais);
+        JsonReader jSonReader = Json.createReader(request.getResponseStream());
         JsonObject obj = jSonReader.readObject();
 
         accessToken = obj.getString("access_token");
@@ -104,7 +100,7 @@ public class OneDriveHandler extends BaseHandler {
     protected void uploadSmallFile(File file) {
         System.out.println("uploadSmallFile called");
         Request request = new Request();
-        String uploadFileName= null;
+        String uploadFileName;
         try {
             uploadFileName = URLEncoder.encode(file.getName(), "UTF-8");
             request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + uploadFileName + ":/content");
@@ -115,8 +111,6 @@ public class OneDriveHandler extends BaseHandler {
             byte[] data = encryptToOutputStream(bais);
             request.setRequestData(data);
             executeRequest(request);
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -142,8 +136,7 @@ public class OneDriveHandler extends BaseHandler {
 
             executeRequest(request);
 
-            ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
-            uploadLink = getObjectFromJSONInput(bais, "uploadUrl");
+            uploadLink = getObjectFromJSONInput(request.getResponseStream(), "uploadUrl");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -195,9 +188,6 @@ public class OneDriveHandler extends BaseHandler {
 
                 uploadedBytesNr += packetSize;
             }
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -258,16 +248,13 @@ public class OneDriveHandler extends BaseHandler {
 
         executeRequest(request);
 
-        String location = request.getResponseHeader("Content-Location");
-        return location;
+        return request.getResponseHeader("Content-Location");
     }
 
     private void downloadContent(String location, String fileName) {
-        int fileSize = 0;
-
         Cipher cipher = getDecryptorCipher();
         try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(fileName)), cipher)) {
-            fileSize = downloadFirstPart(location, fileSize, cos);
+            int fileSize = downloadFirstPart(location, cos);
 
             if(fileSize > DOWNLOAD_PACKET_SIZE) {
                 int downloadedByteNr = DOWNLOAD_PACKET_SIZE;
@@ -282,7 +269,7 @@ public class OneDriveHandler extends BaseHandler {
         }
     }
 
-    private int downloadFirstPart(String url, int fileSize, CipherOutputStream cipherOutputStream) {
+    private int downloadFirstPart(String url, CipherOutputStream cipherOutputStream) {
         Request request = new Request();
         request.setRequestUrl(url);
         request.setRequestType(RequestType.GET);
@@ -292,9 +279,8 @@ public class OneDriveHandler extends BaseHandler {
         executeRequest(request);
 
         String contentRange = request.getResponseHeader("Content-Range");
-        fileSize = Integer.parseInt(contentRange.substring(contentRange.indexOf("/") + 1));
-        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
-        decryptToOutputStream(cipherOutputStream, bais);
+        int fileSize = Integer.parseInt(contentRange.substring(contentRange.indexOf("/") + 1));
+        decryptToOutputStream(cipherOutputStream, request.getResponseStream());
         return fileSize;
     }
 
@@ -309,8 +295,7 @@ public class OneDriveHandler extends BaseHandler {
         executeRequest(request);
 
         int contentLength = Integer.parseInt(request.getResponseHeader("Content-Length"));
-        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
-        decryptToOutputStream(cipherOutputStream, bais);
+        decryptToOutputStream(cipherOutputStream, request.getResponseStream());
 
         return downloadedByteNr + contentLength;
     }
@@ -325,8 +310,7 @@ public class OneDriveHandler extends BaseHandler {
         request.setInputData(true);
         executeRequest(request);
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
-        JsonReader jsonReader = Json.createReader(bais);
+        JsonReader jsonReader = Json.createReader(request.getResponseStream());
         JsonObject jsonObject = jsonReader.readObject();
         JsonArray array = jsonObject.getJsonArray("value");
         for(int i=0; i<array.size(); i++) {
@@ -359,8 +343,7 @@ public class OneDriveHandler extends BaseHandler {
         request.setInputData(true);
         executeRequest(request);
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(request.getResponseData());
-        JsonReader jSonReader = Json.createReader(bais);
+        JsonReader jSonReader = Json.createReader(request.getResponseStream());
         JsonObject rootObject = jSonReader.readObject();
         JsonObject qoutaObject = rootObject.getJsonObject("quota");
 
