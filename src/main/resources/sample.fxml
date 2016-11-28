@@ -74,7 +74,7 @@
                         <Label fx:id="TitleLbl" alignment="TOP_LEFT" text="Providers"/>
                         <TableView fx:id="handlersTable" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
                             <columns>
-                                <TableColumn fx:id="handlerIdColumn" prefWidth="75.0" text="ID" />
+                                <TableColumn fx:id="handlerLabelColumn" prefWidth="75.0" text="Label" />
                                 <TableColumn fx:id="handlerFreesSizeColumn" prefWidth="75.0" text="Free Size" />
                                 <TableColumn fx:id="handlerTotalSizeColumn" prefWidth="75.0" text="Max Size" />
                             </columns>

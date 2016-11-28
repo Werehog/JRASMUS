@@ -29,7 +29,7 @@ public class HandlerDAO {
     }
 
     public List<BaseHandler> getAllStoredHandler() {
-        String query = "SELECT h FROM Handler h";
+        String query = "SELECT h FROM BaseHandler h";
         Query q = em.createQuery(query, BaseHandler.class);
         return q.getResultList();
     }

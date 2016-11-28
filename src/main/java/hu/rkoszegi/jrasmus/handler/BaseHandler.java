@@ -42,6 +42,8 @@ public abstract class BaseHandler extends AbstractEntity {
     private long totalSize;
     private long freeSize;
 
+    private String label;
+
     @Transient
     protected static final long UPLOAD_PACKET_SIZE = 7* 320 * 1024;
     @Transient
@@ -57,6 +59,7 @@ public abstract class BaseHandler extends AbstractEntity {
         idProperty = new SimpleStringProperty();
         freeSizeProperty = new SimpleStringProperty();
         totalSizeProperty = new SimpleStringProperty();
+        labelProperty = new SimpleStringProperty();
     }
 
     public void login() {
@@ -236,16 +239,25 @@ public abstract class BaseHandler extends AbstractEntity {
     private StringProperty freeSizeProperty;
     @Transient
     private StringProperty totalSizeProperty;
+    @Transient
+    private StringProperty labelProperty;
 
     public StringProperty getIdProperty() {
         return idProperty;
     }
 
+    public StringProperty getLabelProperty() {
+        this.labelProperty.set(this.label);
+        return labelProperty;
+    }
+
     public StringProperty getFreeSizeProperty() {
+        this.freeSizeProperty.set(Long.toString(this.freeSize));
         return freeSizeProperty;
     }
 
     public StringProperty getTotalSizeProperty() {
+        this.totalSizeProperty.set(Long.toString(this.totalSize));
         return totalSizeProperty;
     }
 
@@ -274,6 +286,15 @@ public abstract class BaseHandler extends AbstractEntity {
     public void setId(long id) {
         this.id = id;
         this.idProperty.set(Long.toString(id));
+    }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public void setLabel(String label) {
+        this.labelProperty.set(label);
+        this.label = label;
     }
 
     protected void executeRequest(Request request) {

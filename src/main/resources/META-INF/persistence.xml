@@ -8,14 +8,12 @@
         <class>hu.rkoszegi.jrasmus.handler.GoogleDriveHandler</class>
         <class>hu.rkoszegi.jrasmus.handler.OneDriveHandler</class>
         <properties>
-            <!--<property name="javax.persistence.schema-generation.database.action" value="create" />-->
-            <property name="javax.persistence.jdbc.url" value="jdbc:derby:database;create=true"/>
-            <property name="javax.persistence.jdbc.driver" value="org.apache.derby.jdbc.EmbeddedDriver"/>
+            <property name="javax.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
+            <property name="javax.persistence.jdbc.url" value="jdbc:sqlite:sample.db"/>
+            <property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>
+            <property name="eclipselink.ddl-generation.output-mode" value="database"/>
             <!--<property name="eclipselink.jdbc.user" value="test"/>
             <property name="eclipselink.jdbc.password" value="test"/>-->
-            <!--<property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>-->
-            <property name="eclipselink.ddl-generation" value="drop-and-create-tables"/>
-            <property name="eclipselink.ddl-generation.output-mode" value="database"/>
         </properties>
     </persistence-unit>
 </persistence>

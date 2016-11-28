@@ -102,7 +102,7 @@ public class View {
     @FXML
     private TableView<BaseHandler> handlersTable;
     @FXML
-    private TableColumn<BaseHandler, String> handlerIdColumn;
+    private TableColumn<BaseHandler, String> handlerLabelColumn;
     @FXML
     private TableColumn<BaseHandler, String> handlerFreesSizeColumn;
     @FXML
@@ -123,7 +123,7 @@ public class View {
 
         //<Providers Tab>
         handlersTable.setItems(handlerList);
-        handlerIdColumn.setCellValueFactory(cellData -> cellData.getValue().getIdProperty());
+        handlerLabelColumn.setCellValueFactory(cellData -> cellData.getValue().getLabelProperty());
         handlerFreesSizeColumn.setCellValueFactory(cellData -> cellData.getValue().getFreeSizeProperty());
         handlerTotalSizeColumn.setCellValueFactory(cellData -> cellData.getValue().getTotalSizeProperty());
         //</Providers Tab>
@@ -193,7 +193,7 @@ public class View {
                 //TODO 4.2
             }
         });
-
+        handlerList.addAll(handlerDAO.getAllStoredHandler());
         initDebugTab();
     }
 
@@ -578,6 +578,16 @@ public class View {
             if (newHandler != null) {
                 newHandler.login();
                 newHandler.setDriveMetaData();
+
+                TextInputDialog textInputDialog = new TextInputDialog();
+                textInputDialog.setTitle("Handler Label");
+                textInputDialog.setContentText("Please enter a label for the new drive:");
+
+                Optional<String> label = textInputDialog.showAndWait();
+                if (label.isPresent()) {
+                    newHandler.setLabel(label.get());
+                }
+
                 handlerDAO.persist(newHandler);
                 newHandler.setIdProperty(Long.toString(newHandler.getId()));
                 handlerList.add(newHandler);
