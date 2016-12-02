@@ -3,6 +3,7 @@ package hu.rkoszegi.jrasmus.handler;
 import com.sun.deploy.net.URLEncoder;
 import hu.rkoszegi.jrasmus.Request;
 import hu.rkoszegi.jrasmus.RequestType;
+import hu.rkoszegi.jrasmus.model.StoredFile;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -226,10 +227,11 @@ public class OneDriveHandler extends BaseHandler {
     }
 
     @Override
-    protected void downloadFileImpl(String fileName) {
+    protected void downloadFileImpl(StoredFile storedFile) {
         System.out.println("downloadFile called");
-        String downloadUrl = getDownloadUrl(fileName);
-        downloadContent(downloadUrl, fileName);
+        String downloadUrl = getDownloadUrl(storedFile.getUploadName());
+        String newFilePath = storedFile.getPath() + "\\" + storedFile.getUploadName();
+        downloadContent(downloadUrl, newFilePath);
     }
 
     private String getDownloadUrl(String fileName) {
@@ -251,9 +253,9 @@ public class OneDriveHandler extends BaseHandler {
         return request.getResponseHeader("Content-Location");
     }
 
-    private void downloadContent(String location, String fileName) {
+    private void downloadContent(String location, String filePath) {
         Cipher cipher = getDecryptorCipher();
-        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(fileName)), cipher)) {
+        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(filePath)), cipher)) {
             int fileSize = downloadFirstPart(location, cos);
 
             if(fileSize > DOWNLOAD_PACKET_SIZE) {

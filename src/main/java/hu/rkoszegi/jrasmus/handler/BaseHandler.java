@@ -7,13 +7,11 @@ import hu.rkoszegi.jrasmus.exception.HostUnavailableException;
 import hu.rkoszegi.jrasmus.exception.ServiceUnavailableException;
 import hu.rkoszegi.jrasmus.exception.UnauthorizedException;
 import hu.rkoszegi.jrasmus.model.AbstractEntity;
+import hu.rkoszegi.jrasmus.model.StoredFile;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
-import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
-import javax.crypto.CipherOutputStream;
-import javax.crypto.NoSuchPaddingException;
+import javax.crypto.*;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
@@ -55,11 +53,17 @@ public abstract class BaseHandler extends AbstractEntity {
     @Transient
     protected String connectionTestLink;
 
+    @Transient
+    private SecretKey key;
+
     public BaseHandler() {
         idProperty = new SimpleStringProperty();
         freeSizeProperty = new SimpleStringProperty();
         totalSizeProperty = new SimpleStringProperty();
         labelProperty = new SimpleStringProperty();
+
+        //For testing
+        key = KeyManager.getKey();
     }
 
     public void login() {
@@ -133,12 +137,12 @@ public abstract class BaseHandler extends AbstractEntity {
 
     protected abstract void uploadLargeFile(File file);
 
-    public void downloadFile(String fileName) {
+    public void downloadFile(StoredFile storedFile) {
         checkInternetConnection();
-        downloadFileImpl(fileName);
+        downloadFileImpl(storedFile);
     }
 
-    protected abstract void downloadFileImpl(String fileName);
+    protected abstract void downloadFileImpl(StoredFile storedFile);
 
     public void listFolder () {
         checkInternetConnection();
@@ -182,7 +186,7 @@ public abstract class BaseHandler extends AbstractEntity {
         Cipher cipher = null;
         try {
             cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.ENCRYPT_MODE, KeyManager.getKey());
+            cipher.init(Cipher.ENCRYPT_MODE, key);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         } catch (NoSuchPaddingException e) {
@@ -211,7 +215,7 @@ public abstract class BaseHandler extends AbstractEntity {
         Cipher cipher = null;
         try {
             cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.DECRYPT_MODE, KeyManager.getKey());
+            cipher.init(Cipher.DECRYPT_MODE, key);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         } catch (NoSuchPaddingException e) {
@@ -295,6 +299,14 @@ public abstract class BaseHandler extends AbstractEntity {
         this.label = label;
     }
 
+    public SecretKey getKey() {
+        return key;
+    }
+
+    public void setKey(SecretKey key) {
+        this.key = key;
+    }
+
     protected void executeRequest(Request request) {
         boolean isRequestInProgress = true;
         int backoffIndex = 0;
@@ -338,5 +350,11 @@ public abstract class BaseHandler extends AbstractEntity {
         if(!available) {
             throw new HostUnavailableException("Host is unavailable");
         }
+    }
+
+    //Providers lista miatt
+    @Override
+    public String toString() {
+        return label;
     }
 }

@@ -25,6 +25,9 @@ public class StoredFile {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
+    private String salt;
+    private String pwHash;
+
     public StoredFile() {
 
         pathProperty = new SimpleStringProperty();
@@ -75,6 +78,22 @@ public class StoredFile {
         this.id = id;
     }
 
+    public String getSalt() {
+        return salt;
+    }
+
+    public void setSalt(String salt) {
+        this.salt = salt;
+    }
+
+    public String getPwHash() {
+        return pwHash;
+    }
+
+    public void setPwHash(String pwHash) {
+        this.pwHash = pwHash;
+    }
+
     //properties for JavaFx
 
     @Transient
@@ -85,14 +104,17 @@ public class StoredFile {
     private StringProperty dateProperty;
 
     public StringProperty getNameProperty() {
+        this.nameProperty.set(this.uploadName);
         return nameProperty;
     }
 
     public StringProperty getPathProperty() {
+        this.pathProperty.set(this.path);
         return pathProperty;
     }
 
     public StringProperty getDateProperty() {
+        this.dateProperty.set(this.lastModified.toString());
         return dateProperty;
     }
 }

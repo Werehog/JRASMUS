@@ -124,6 +124,7 @@ public class Request {
             responseMessage = connection.getResponseMessage();
             responseHeaders = connection.getHeaderFields();
 
+            System.out.println(responseCode + " " + responseMessage);
             //printAllResponseHeaders(connection);
 
             if(isResponseData) {

@@ -103,9 +103,9 @@
                         <padding>
                             <Insets top="10.0"/>
                         </padding>
-                        <Button text="List files"></Button>
-                        <Button text="Add File" onMouseClicked="#addFile"></Button>
-                        <Button text="Remove File"></Button>
+                        <Button text="Add File" onMouseClicked="#addFile" />
+                        <Button text="Download File" onMouseClicked="#downloadFile" />
+                        <Button text="Remove File" onMouseClicked="#deleteFile"/>
                     </VBox>
 
                     <!-- Search table (scrollable by default) -->

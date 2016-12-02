@@ -50,4 +50,11 @@ public class StoredFileDAO {
             tx.commit();
         }
     }
+
+    public void deleteByReference(StoredFile storedFile) {
+            EntityTransaction tx = em.getTransaction();
+            tx.begin();
+            em.remove(storedFile);
+            tx.commit();
+    }
 }

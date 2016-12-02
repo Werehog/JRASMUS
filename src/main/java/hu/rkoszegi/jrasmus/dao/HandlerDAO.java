@@ -34,20 +34,20 @@ public class HandlerDAO {
         return q.getResultList();
     }
 
-   /* public List<StoredFile> findByName(String name) {
-        String query = "SELECT f FROM StoredFile f WHERE f.name = :pName";
+   public List<BaseHandler> findByName(String label) {
+        String query = "SELECT h FROM BaseHandler h WHERE h.label = :pName";
         Query q = em.createQuery(query, StoredFile.class);
-        q.setParameter("pName", name);
+        q.setParameter("pName", label);
         return q.getResultList();
     }
 
     public void deleteByName(String name) {
-        List<StoredFile> customers = this.findByName(name);
-        if (customers != null && !customers.isEmpty()) {
+        List<BaseHandler> handler = this.findByName(name);
+        if (handler != null && !handler.isEmpty()) {
             EntityTransaction tx = em.getTransaction();
             tx.begin();
-            em.remove(customers.get(0));
+            em.remove(handler.get(0));
             tx.commit();
         }
-    }*/
+    }
 }

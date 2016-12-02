@@ -4,6 +4,7 @@ import com.sun.deploy.net.URLEncoder;
 import hu.rkoszegi.jrasmus.Request;
 import hu.rkoszegi.jrasmus.RequestType;
 import hu.rkoszegi.jrasmus.model.GDriveFile;
+import hu.rkoszegi.jrasmus.model.StoredFile;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -242,12 +243,12 @@ public class GoogleDriveHandler extends BaseHandler {
     }
 
     @Override
-    protected void downloadFileImpl(String fileName) {
-        GDriveFile gDriveFile = getStoredFileData(fileName);
+    protected void downloadFileImpl(StoredFile storedFile) {
+        GDriveFile gDriveFile = getStoredFileData(storedFile.getUploadName());
         if(gDriveFile.getSize() > MAX_SMALL_FILE_SIZE) {
-            downloadLargeFile(gDriveFile);
+            downloadLargeFile(gDriveFile, storedFile.getPath());
         } else {
-            downloadFileInOnePacket(gDriveFile);
+            downloadFileInOnePacket(gDriveFile, storedFile.getPath());
         }
     }
 
@@ -278,9 +279,9 @@ public class GoogleDriveHandler extends BaseHandler {
         return gDriveFile;
     }
 
-    private void downloadFileInOnePacket(GDriveFile gDriveFile) {
+    private void downloadFileInOnePacket(GDriveFile gDriveFile, String filePath) {
         Cipher cipher = getDecryptorCipher();
-        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(gDriveFile.getName())), cipher)) {
+        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(filePath + "\\" + gDriveFile.getName())), cipher)) {
             Request request = new Request();
             request.setRequestUrl(gDriveFile.getDownloadUrl() + "?alt=media");
             request.setInputData(true);
@@ -295,7 +296,7 @@ public class GoogleDriveHandler extends BaseHandler {
         }
     }
 
-    private void downloadLargeFile(GDriveFile gDriveFile) {
+    private void downloadLargeFile(GDriveFile gDriveFile, String filePath) {
         int downloadedByteNr = 0;
         int packetNumber = Math.toIntExact( gDriveFile.getSize() / DOWNLOAD_PACKET_SIZE) + 1;
         System.out.println("Packet number: " + packetNumber);
@@ -323,7 +324,9 @@ public class GoogleDriveHandler extends BaseHandler {
 
         Cipher cipher = getDecryptorCipher();
 
-        try (CipherOutputStream cipherOutputStream = new CipherOutputStream(new FileOutputStream(new File(gDriveFile.getName())), cipher)) {
+        String newFilePath = filePath + "\\" + gDriveFile.getName();
+
+        try (CipherOutputStream cipherOutputStream = new CipherOutputStream(new FileOutputStream(new File(newFilePath)), cipher)) {
             int encryptedFileSize = (fileSize / 16 + 1) * 16;
             while(downloadedByteNr < encryptedFileSize) {
                 Request request = new Request();
