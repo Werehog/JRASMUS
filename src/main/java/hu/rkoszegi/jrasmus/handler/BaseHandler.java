@@ -66,11 +66,11 @@ public abstract class BaseHandler extends AbstractEntity {
         checkInternetConnection();
 
         Properties properties = new Properties();
-        String clientId = null;
-        String clientSecret = null;
-        String loginUrl = null;
-        String redirectUri = null;
-        String scope = null;
+        String clientId;
+        String clientSecret;
+        String loginUrl;
+        String redirectUri;
+        String scope;
         try(InputStream propertyInputStream = BaseHandler.class.getResourceAsStream( propertyFileName)){
             properties.load(propertyInputStream);
             clientId = properties.getProperty("clientId");
@@ -85,8 +85,6 @@ public abstract class BaseHandler extends AbstractEntity {
 
         String url = loginUrl +
                 "client_id=" + clientId +
-                //TODO: átírni appfolderre
-                // "&scope=https://www.googleapis.com/auth/drive.appfolder" +
                 "&scope=" + scope +
                 "&response_type=code" +
                 "&redirect_uri=" + redirectUri;
@@ -101,7 +99,7 @@ public abstract class BaseHandler extends AbstractEntity {
         }
     }
 
-    protected void getToken(String authCode, String clientId, String clientSecret) {
+    private void getToken(String authCode, String clientId, String clientSecret) {
         checkInternetConnection();
         getTokenImpl(authCode, clientId, clientSecret);
     }
