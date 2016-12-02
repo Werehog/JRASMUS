@@ -113,6 +113,9 @@ public class Request {
             }
 
             responseCode = connection.getResponseCode();
+            responseMessage = connection.getResponseMessage();
+
+            System.out.println(responseCode + " " + responseMessage);
 
             if(responseCode == 401) {
                 throw new UnauthorizedException("Client not authenticated");
@@ -120,11 +123,8 @@ public class Request {
                 throw new ServiceUnavailableException("Server Error");
             }
 
-
-            responseMessage = connection.getResponseMessage();
             responseHeaders = connection.getHeaderFields();
 
-            System.out.println(responseCode + " " + responseMessage);
             //printAllResponseHeaders(connection);
 
             if(isResponseData) {

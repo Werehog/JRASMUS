@@ -628,7 +628,7 @@ public class View {
                     StoredFile storedFile = new StoredFile();
                     storedFile.setLastModified(new Date(file.lastModified()));
                     storedFile.setPath(file.getPath());
-                    storedFile.setUploadName(file.getName());
+                    storedFile.generateUploadName(file.getName());
                     //TODO: handler es fajlnev
                     byte[] salt = KeyHelper.generateSalt();
                     SecretKey key = KeyHelper.generateSecretKeyFromPassword(password, salt);
@@ -638,7 +638,7 @@ public class View {
                     storedFile.setPwHash(base64Encoder.encodeToString(KeyHelper.generatePasswordHash(key)));
 
                     handler.setKey(key);
-                    handler.uploadFile(file);
+                    handler.uploadFile(file, storedFile.getUploadName());
                     storedFile.setHandler(handler);
 
                     storedFileList.add(storedFile);

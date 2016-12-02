@@ -1,10 +1,16 @@
 package hu.rkoszegi.jrasmus.model;
 
+import hu.rkoszegi.jrasmus.crypto.CryptoHelper;
+import hu.rkoszegi.jrasmus.crypto.KeyManager;
 import hu.rkoszegi.jrasmus.handler.BaseHandler;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
+import javax.crypto.SecretKey;
 import javax.persistence.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
 import java.util.Date;
 
 /**
@@ -116,5 +122,23 @@ public class StoredFile {
     public StringProperty getDateProperty() {
         this.dateProperty.set(this.lastModified.toString());
         return dateProperty;
+    }
+
+    public void generateUploadName(String fileName) {
+        ByteArrayInputStream bais = new ByteArrayInputStream(fileName.getBytes());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        SecretKey key = KeyManager.getKey();
+        CryptoHelper.encrypt(key,bais,baos);
+        uploadName = Base64.getEncoder().encodeToString(baos.toByteArray());
+       /*uploadName = fileName;*/
+    }
+
+    public String getDecodedUploadName() {
+        byte[] baseDecodedByteArray = Base64.getDecoder().decode(uploadName);
+        ByteArrayInputStream bais = new ByteArrayInputStream(baseDecodedByteArray);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        SecretKey key = KeyManager.getKey();
+        CryptoHelper.decrypt(key,bais,baos);
+        return new String(baos.toByteArray());
     }
 }

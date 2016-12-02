@@ -124,18 +124,18 @@ public abstract class BaseHandler extends AbstractEntity {
 
     protected abstract void setDriveMetaDataImpl();
 
-    public void uploadFile(File file) {
+    public void uploadFile(File file, String uploadedFileName) {
         checkInternetConnection();
         if(file.length() < 10000000) {
-            uploadSmallFile(file);
+            uploadSmallFile(file, uploadedFileName);
         } else {
-            uploadLargeFile(file);
+            uploadLargeFile(file, uploadedFileName);
         }
     }
 
-    protected abstract void uploadSmallFile(File file);
+    protected abstract void uploadSmallFile(File file, String uploadedFileName);
 
-    protected abstract void uploadLargeFile(File file);
+    protected abstract void uploadLargeFile(File file, String uploadedFileName);
 
     public void downloadFile(StoredFile storedFile) {
         checkInternetConnection();

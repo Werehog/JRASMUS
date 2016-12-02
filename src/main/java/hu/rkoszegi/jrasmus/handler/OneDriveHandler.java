@@ -98,13 +98,13 @@ public class OneDriveHandler extends BaseHandler {
     }
 
     @Override
-    protected void uploadSmallFile(File file) {
+    protected void uploadSmallFile(File file, String uploadedFileName) {
         System.out.println("uploadSmallFile called");
         Request request = new Request();
-        String uploadFileName;
+        String urlEncodedFileName;
         try {
-            uploadFileName = URLEncoder.encode(file.getName(), "UTF-8");
-            request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + uploadFileName + ":/content");
+            urlEncodedFileName = URLEncoder.encode(uploadedFileName, "UTF-8");
+            request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + urlEncodedFileName + ":/content");
             request.setRequestType(RequestType.PUT);
             request.addRequestHeader("Content-Type", "text/plain");
             request.addRequestHeader("Authorization", "bearer " + accessToken);
@@ -118,18 +118,18 @@ public class OneDriveHandler extends BaseHandler {
     }
 
     @Override
-    protected void uploadLargeFile(File file) {
+    protected void uploadLargeFile(File file, String uploadedFileName) {
         System.out.println("uploadLargeFile called");
-        String uploadLink = createUploadSession(file);
+        String uploadLink = createUploadSession(uploadedFileName);
         uploadFragments(file, uploadLink);
     }
 
-    private String createUploadSession(File file) {
+    private String createUploadSession(String uploadedFileName) {
         String uploadLink = null;
         Request request = new Request();
         try {
-            String uploadFileName = URLEncoder.encode(file.getName(), "UTF-8");
-            request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + uploadFileName + ":/upload.createSession");
+            String urlEncodedFileName = URLEncoder.encode(uploadedFileName, "UTF-8");
+            request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + urlEncodedFileName + ":/upload.createSession");
             request.setRequestType(RequestType.POST);
             request.addRequestHeader("Content-Type", "text/plain");
             request.addRequestHeader("Authorization", "bearer " + accessToken);
@@ -230,7 +230,7 @@ public class OneDriveHandler extends BaseHandler {
     protected void downloadFileImpl(StoredFile storedFile) {
         System.out.println("downloadFile called");
         String downloadUrl = getDownloadUrl(storedFile.getUploadName());
-        String newFilePath = storedFile.getPath() + "\\" + storedFile.getUploadName();
+        String newFilePath = storedFile.getPath() + "\\" + storedFile.getDecodedUploadName();
         downloadContent(downloadUrl, newFilePath);
     }
 

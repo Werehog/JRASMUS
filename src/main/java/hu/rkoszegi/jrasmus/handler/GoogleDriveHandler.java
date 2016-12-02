@@ -53,7 +53,7 @@ public class GoogleDriveHandler extends BaseHandler {
     }
 
     @Override
-    protected void uploadSmallFile(File file) {
+    protected void uploadSmallFile(File file, String uploadedFileName) {
         System.out.println("uploadSmallFile called");
         String boundary = "foo_bar_baz";
         Request request = new Request();
@@ -66,7 +66,7 @@ public class GoogleDriveHandler extends BaseHandler {
         StringBuilder builder = new StringBuilder();
         builder.append("--").append(boundary).append("\n");
         builder.append("Content-Type: application/json; charset=UTF-8\n\n");
-        builder.append("{\"name\":\"" + file.getName() + "\"}\n\n");
+        builder.append("{\"name\":\"" + uploadedFileName + "\"}\n\n");
         builder.append("--" + boundary + "\n");
         builder.append("Content-Type: text/plain\n\n");
 
@@ -88,14 +88,14 @@ public class GoogleDriveHandler extends BaseHandler {
     }
 
     @Override
-    protected void uploadLargeFile(File file) {
+    protected void uploadLargeFile(File file, String uploadedFileName) {
         System.out.println("uploadLargeFile called");
-        String uploadLink = createUploadSession(file);
+        String uploadLink = createUploadSession(file, uploadedFileName);
         System.out.println(uploadLink);
         uploadFragments(file, uploadLink);
     }
 
-    private String createUploadSession(File file) {
+    private String createUploadSession(File file, String uploadedFileName) {
         Request request = new Request();
         request.setRequestUrl("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable");
         request.setRequestType(RequestType.POST);
@@ -104,7 +104,7 @@ public class GoogleDriveHandler extends BaseHandler {
         request.addRequestHeader("Authorization", "Bearer " + accessToken);
         request.addRequestHeader("X-Upload-Content-Type", "text/plain");
         request.setInputData(true);
-        String metadata = "{\"name\":\"" + file.getName() + "\"}";
+        String metadata = "{\"name\":\"" + uploadedFileName + "\"}";
         request.setRequestData(metadata.getBytes());
 
         executeRequest(request);
@@ -245,10 +245,11 @@ public class GoogleDriveHandler extends BaseHandler {
     @Override
     protected void downloadFileImpl(StoredFile storedFile) {
         GDriveFile gDriveFile = getStoredFileData(storedFile.getUploadName());
+        String newFilePath = storedFile.getPath() + "\\" + storedFile.getDecodedUploadName();
         if(gDriveFile.getSize() > MAX_SMALL_FILE_SIZE) {
-            downloadLargeFile(gDriveFile, storedFile.getPath());
+            downloadLargeFile(gDriveFile, newFilePath);
         } else {
-            downloadFileInOnePacket(gDriveFile, storedFile.getPath());
+            downloadFileInOnePacket(gDriveFile, newFilePath);
         }
     }
 
@@ -279,9 +280,9 @@ public class GoogleDriveHandler extends BaseHandler {
         return gDriveFile;
     }
 
-    private void downloadFileInOnePacket(GDriveFile gDriveFile, String filePath) {
+    private void downloadFileInOnePacket(GDriveFile gDriveFile, String newFilePath) {
         Cipher cipher = getDecryptorCipher();
-        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(filePath + "\\" + gDriveFile.getName())), cipher)) {
+        try (CipherOutputStream cos = new CipherOutputStream(new FileOutputStream(new File(newFilePath)), cipher)) {
             Request request = new Request();
             request.setRequestUrl(gDriveFile.getDownloadUrl() + "?alt=media");
             request.setInputData(true);
@@ -296,7 +297,7 @@ public class GoogleDriveHandler extends BaseHandler {
         }
     }
 
-    private void downloadLargeFile(GDriveFile gDriveFile, String filePath) {
+    private void downloadLargeFile(GDriveFile gDriveFile, String newFilePath) {
         int downloadedByteNr = 0;
         int packetNumber = Math.toIntExact( gDriveFile.getSize() / DOWNLOAD_PACKET_SIZE) + 1;
         System.out.println("Packet number: " + packetNumber);
@@ -324,7 +325,7 @@ public class GoogleDriveHandler extends BaseHandler {
 
         Cipher cipher = getDecryptorCipher();
 
-        String newFilePath = filePath + "\\" + gDriveFile.getName();
+
 
         try (CipherOutputStream cipherOutputStream = new CipherOutputStream(new FileOutputStream(new File(newFilePath)), cipher)) {
             int encryptedFileSize = (fileSize / 16 + 1) * 16;
