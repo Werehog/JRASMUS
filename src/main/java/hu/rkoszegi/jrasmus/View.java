@@ -218,6 +218,10 @@ public class View {
 
         storedFileList.addAll(storedFileDAO.getAllStoredFile());
 
+        for(BaseHandler handler : handlerList) {
+            handler.refreshToken();
+        }
+
         //handlerList.get(1).uploadFile(new File("dbdec.pdf"));
         //initDebugTab();
     }
