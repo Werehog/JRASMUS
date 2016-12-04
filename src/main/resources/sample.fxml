@@ -39,36 +39,8 @@
     <!-- Tabbed panel -->
     <TabPane fx:id="tabPane">
         <tabs>
-
-            <!-- mainTab tab -->
-            <Tab fx:id="mainTab" text="Main" closable="False">
-
-                <HBox spacing="10">
-
-
-                    <VBox spacing="10" minWidth="100">
-
-                        <padding>
-                            <Insets top="10.0"/>
-                        </padding>
-
-                        <Button text="Check Files"></Button>
-                        <Button text="Sync"></Button>
-                        <Button text="Add File" onMouseClicked="#addFile"></Button>
-                        <Button text="Remove File"></Button>
-                    </VBox>
-
-                    <!-- Search table (scrollable by default) -->
-                    <TableView fx:id="searchTable" editable="false" HBox.hgrow="ALWAYS">
-                        <columns>
-                        </columns>
-                    </TableView>
-                </HBox>
-
-            </Tab>
-
             <!-- Providers tab -->
-            <Tab fx:id="providersTab" text="Providers" closable="False">
+            <Tab fx:id="drivesTab" text="Drives" closable="False">
                 <HBox>
                     <VBox fx:id="VBoxMain" alignment="TOP_CENTER" prefHeight="423.0" prefWidth="341.0">
                         <Label fx:id="TitleLbl" alignment="TOP_LEFT" text="Providers"/>
@@ -104,8 +76,8 @@
                             <Insets top="10.0"/>
                         </padding>
                         <Button text="Add File" onMouseClicked="#addFile" />
-                        <Button text="Download File" onMouseClicked="#downloadFile" />
-                        <Button text="Remove File" onMouseClicked="#deleteFile"/>
+                        <Button fx:id="downloadFileButton" text="Download File" onMouseClicked="#downloadFile" />
+                        <Button fx:id="removeFileButton" text="Remove File" onMouseClicked="#deleteFile"/>
                     </VBox>
 
                     <!-- Search table (scrollable by default) -->
@@ -114,7 +86,7 @@
                             <TableColumn fx:id="nameColumn" prefWidth="75.0" text="Name" />
                             <TableColumn fx:id="pathColumn" prefWidth="75.0" text="Path" />
                             <!--<TableColumn fx:id="sizeColumn" prefWidth="75.0" text="Size" />-->
-                            <TableColumn fx:id="lastUploadedColumn" prefWidth="75.0" text="Last Uploaded" />
+                            <TableColumn fx:id="driveLabelColumn" prefWidth="75.0" text="Drive Label" />
                         </columns>
                         <columnResizePolicy>
                             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

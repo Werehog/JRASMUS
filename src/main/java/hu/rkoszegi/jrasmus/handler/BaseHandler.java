@@ -1,7 +1,7 @@
 package hu.rkoszegi.jrasmus.handler;
 
 import hu.rkoszegi.jrasmus.Request;
-import hu.rkoszegi.jrasmus.crypto.KeyManager;
+import hu.rkoszegi.jrasmus.crypto.KeyHelper;
 import hu.rkoszegi.jrasmus.WebLogin;
 import hu.rkoszegi.jrasmus.exception.HostUnavailableException;
 import hu.rkoszegi.jrasmus.exception.ServiceUnavailableException;
@@ -18,7 +18,6 @@ import javax.json.JsonReader;
 import javax.persistence.*;
 import java.io.*;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -63,7 +62,7 @@ public abstract class BaseHandler extends AbstractEntity {
         labelProperty = new SimpleStringProperty();
 
         //For testing
-        key = KeyManager.getKey();
+        key = KeyHelper.getFileNameKey();
     }
 
     public void login() {

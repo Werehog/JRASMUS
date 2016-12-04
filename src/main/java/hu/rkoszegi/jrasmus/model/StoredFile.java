@@ -1,7 +1,7 @@
 package hu.rkoszegi.jrasmus.model;
 
 import hu.rkoszegi.jrasmus.crypto.CryptoHelper;
-import hu.rkoszegi.jrasmus.crypto.KeyManager;
+import hu.rkoszegi.jrasmus.crypto.KeyHelper;
 import hu.rkoszegi.jrasmus.handler.BaseHandler;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -127,7 +127,7 @@ public class StoredFile {
     public void generateUploadName(String fileName) {
         ByteArrayInputStream bais = new ByteArrayInputStream(fileName.getBytes());
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        SecretKey key = KeyManager.getKey();
+        SecretKey key = KeyHelper.getFileNameKey();
         CryptoHelper.encrypt(key,bais,baos);
         uploadName = Base64.getEncoder().encodeToString(baos.toByteArray());
        /*uploadName = fileName;*/
@@ -137,7 +137,7 @@ public class StoredFile {
         byte[] baseDecodedByteArray = Base64.getDecoder().decode(uploadName);
         ByteArrayInputStream bais = new ByteArrayInputStream(baseDecodedByteArray);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        SecretKey key = KeyManager.getKey();
+        SecretKey key = KeyHelper.getFileNameKey();
         CryptoHelper.decrypt(key,bais,baos);
         return new String(baos.toByteArray());
     }

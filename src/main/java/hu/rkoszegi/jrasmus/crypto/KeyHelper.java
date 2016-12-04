@@ -3,14 +3,9 @@ package hu.rkoszegi.jrasmus.crypto;
 import javax.crypto.*;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.io.*;
+import java.security.*;
+import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 
@@ -19,19 +14,36 @@ import java.security.spec.KeySpec;
  */
 public class KeyHelper {
 
+    private static SecretKey fileNameKey;
+
+    public static SecretKey getFileNameKey() {
+        char[] password = "TestPassword".toCharArray();
+        if(fileNameKey != null) {
+            return fileNameKey;
+        }
+
+        try(InputStream keystoreInputStream = KeyHelper.class.getResourceAsStream("/keystore.ks")) {
+            KeyStore keyStore = KeyStore.getInstance("JCEKS");
+            keyStore.load(keystoreInputStream, password);
+            fileNameKey = (SecretKey) keyStore.getKey("SecretKey", password);
+        } catch (IOException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException | KeyStoreException e) {
+            e.printStackTrace();
+        }
+
+        return fileNameKey;
+    }
+
     public static SecretKey generateSecretKeyFromPassword(char[] password, byte[] salt) {
         SecretKey key = null;
         int desiredKeyLen = 128;
         int iterations = 65536;
         try {
-            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            //key = secretKeyFactory.generateSecret(new PBEKeySpec(password,salt,iterations,desiredKeyLen));
+            String algorithm = "PBKDF2WithHmacSHA256";
+            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(algorithm);
             KeySpec spec = new PBEKeySpec(password, salt, iterations, desiredKeyLen);
-            SecretKey tmp = secretKeyFactory.generateSecret(spec);
+            SecretKey tmp = keyFactory.generateSecret(spec);
             key = new SecretKeySpec(tmp.getEncoded(), "AES");
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (InvalidKeySpecException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             e.printStackTrace();
         }
 
@@ -47,66 +59,6 @@ public class KeyHelper {
         }
         md.update(key.getEncoded());
         return md.digest();
-    }
-
-    private static void encryptFile(SecretKey key) {
-        Cipher cipher = null;
-        try {
-            cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.ENCRYPT_MODE, key);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        }
-
-        try (FileInputStream fis = new FileInputStream("szakirod-kezeles.pdf");
-             FileOutputStream fos = new FileOutputStream("encoded.ric");
-             CipherOutputStream cos = new CipherOutputStream(fos,cipher)){
-
-            byte[] b = new byte[8];
-            int i = fis.read(b);
-            while (i != -1) {
-                cos.write(b, 0, i);
-                i = fis.read(b);
-            }
-            cos.flush();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void decryptFile(SecretKey key) {
-        Cipher cipher = null;
-        try {
-            cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.DECRYPT_MODE, key);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        }
-        try (FileInputStream fis = new FileInputStream("encoded.ric");
-             CipherInputStream  cis = new CipherInputStream(fis, cipher);
-             FileOutputStream fos = new FileOutputStream("decoded.pdf")) {
-
-            byte[] b = new byte[10];
-            int i = cis.read(b);
-            while (i != -1) {
-                fos.write(b, 0, i);
-                i = cis.read(b);
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     public static byte[] generateSalt() {
