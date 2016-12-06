@@ -31,7 +31,7 @@ import java.util.*;
 /**
  * Created by rkoszegi on 14/11/2016.
  */
-public class View {
+public class Controller {
 
     HandlerDAO handlerDAO;
     StoredFileDAO storedFileDAO;
@@ -85,7 +85,7 @@ public class View {
     private Button removeFileButton;
 
     /**
-     * View initialization, it will be called after view was prepared
+     * Controller initialization, it will be called after view was prepared
      */
     @FXML
     public void initialize() {
@@ -110,7 +110,7 @@ public class View {
             if (newSelection != null) {
                 BtnDelete.setDisable(false);
             } else {
-                BtnDelete.setDisable(false);
+                BtnDelete.setDisable(true);
             }
         });
 
@@ -119,8 +119,8 @@ public class View {
                 downloadFileButton.setDisable(false);
                 removeFileButton.setDisable(false);
             } else {
-                downloadFileButton.setDisable(false);
-                removeFileButton.setDisable(false);
+                downloadFileButton.setDisable(true);
+                removeFileButton.setDisable(true);
             }
         });
 

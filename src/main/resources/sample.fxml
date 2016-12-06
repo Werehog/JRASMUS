@@ -27,7 +27,7 @@
 </GridPane>-->
 
 <?import javafx.scene.control.ListView?>
-<VBox fx:controller="hu.rkoszegi.jrasmus.View" xmlns:fx="http://javafx.com/fxml/1"
+<VBox fx:controller="hu.rkoszegi.jrasmus.Controller" xmlns:fx="http://javafx.com/fxml/1"
       fx:id="rootLayout" alignment="CENTER" spacing="10" prefWidth="600"
       prefHeight="460" minWidth="600" minHeight="460">
 
