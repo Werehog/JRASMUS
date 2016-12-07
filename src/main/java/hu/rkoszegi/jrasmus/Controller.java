@@ -47,7 +47,6 @@ public class Controller {
     private Tab drivesTab;
 
 
-
     //<Files Tab>
     private ObservableList<StoredFile> storedFileList = FXCollections.observableArrayList();
 
@@ -143,7 +142,7 @@ public class Controller {
         handlerList.addAll(handlerDAO.getAllStoredHandler());
         storedFileList.addAll(storedFileDAO.getAllStoredFile());
 
-        for(BaseHandler handler : handlerList) {
+        for (BaseHandler handler : handlerList) {
             handler.refreshToken();
         }
     }
@@ -306,7 +305,7 @@ public class Controller {
 
     public void deleteFile() {
         StoredFile file = filesTable.getSelectionModel().getSelectedItem();
-        if(file != null) {
+        if (file != null) {
             BaseHandler handler = file.getHandler();
             handler.deleteFile(file.getUploadName());
             storedFileDAO.deleteByReference(file);
@@ -369,6 +368,12 @@ public class Controller {
     private void deleteAction(ActionEvent action) {
         BaseHandler selectedHandler = handlersTable.getSelectionModel().getSelectedItem();
         if (selectedHandler != null) {
+            for (StoredFile file : storedFileDAO.findByHandler(selectedHandler)) {
+                selectedHandler.deleteFile(file.getUploadName());
+                storedFileDAO.deleteByReference(file);
+                storedFileList.remove(storedFileList.indexOf(file));
+            }
+
             handlerDAO.deleteByName(selectedHandler.getLabel());
             handlerList.remove(handlerList.indexOf(selectedHandler));
         }

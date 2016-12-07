@@ -1,6 +1,7 @@
 package hu.rkoszegi.jrasmus.dao;
 
 import hu.rkoszegi.jrasmus.DatabaseManager;
+import hu.rkoszegi.jrasmus.handler.BaseHandler;
 import hu.rkoszegi.jrasmus.model.StoredFile;
 
 import javax.persistence.EntityManager;
@@ -56,5 +57,12 @@ public class StoredFileDAO {
             tx.begin();
             em.remove(storedFile);
             tx.commit();
+    }
+
+    public List<StoredFile> findByHandler(BaseHandler handler) {
+        String query = "SELECT f FROM StoredFile f WHERE f.handler = :handler";
+        Query q = em.createQuery(query, StoredFile.class);
+        q.setParameter("handler", handler);
+        return q.getResultList();
     }
 }
