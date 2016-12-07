@@ -1,6 +1,6 @@
 package hu.rkoszegi.jrasmus.handler;
 
-import com.sun.deploy.net.URLEncoder;
+import java.net.URLEncoder;
 import hu.rkoszegi.jrasmus.Request;
 import hu.rkoszegi.jrasmus.RequestType;
 import hu.rkoszegi.jrasmus.model.GDriveFile;
