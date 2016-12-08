@@ -46,7 +46,7 @@ public abstract class BaseHandler extends AbstractEntity {
     @Transient
     protected static final long UPLOAD_PACKET_SIZE = 7* 320 * 1024;
     @Transient
-    protected static final int DOWNLOAD_PACKET_SIZE = 1048576;
+    protected static final int DOWNLOAD_PACKET_SIZE = 1048576 * 5;
 
     @Transient
     protected String propertyFileName;
@@ -214,14 +214,13 @@ public abstract class BaseHandler extends AbstractEntity {
     }
 
     protected void decryptToOutputStream(CipherOutputStream cos, InputStream in) {
-        byte[] b = new byte[8];
+        byte[] b = new byte[512];
         try {
             int i = in.read(b);
             while (i != -1) {
                 cos.write(b, 0, i);
                 i = in.read(b);
             }
-            cos.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }

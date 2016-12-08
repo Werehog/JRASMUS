@@ -335,6 +335,10 @@ public class OneDriveHandler extends BaseHandler {
 
     @Override
     protected void deleteFileImpl(String fileName) {
+        if(fileName.contains("/")) {
+            fileName = fileName.substring(0, fileName.indexOf("/"));
+        }
+        System.out.println(fileName);
         Request request = new Request();
         request.setRequestUrl("https://api.onedrive.com/v1.0/drive/special/approot:/" + fileName);
         request.setRequestType(RequestType.DELETE);

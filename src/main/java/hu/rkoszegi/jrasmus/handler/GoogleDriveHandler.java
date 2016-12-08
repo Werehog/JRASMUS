@@ -119,7 +119,7 @@ public class GoogleDriveHandler extends BaseHandler {
 
     protected void uploadFragments(File file, String uploadLink) {
 
-        long UPLOAD_PACKET_SIZE = 256 * 1024 * 7;
+        long UPLOAD_PACKET_SIZE = 256 * 1024 * 7 * 5;
 
         long totalFileSize = file.length();
         long encryptedFileSize = (totalFileSize / 16 + 1) * 16;
@@ -305,10 +305,10 @@ public class GoogleDriveHandler extends BaseHandler {
     }
 
     private void downloadLargeFile(GDriveFile gDriveFile, String newFilePath) {
-        int downloadedByteNr = 0;
+        long downloadedByteNr = 0;
         int packetNumber = Math.toIntExact( gDriveFile.getSize() / DOWNLOAD_PACKET_SIZE) + 1;
         System.out.println("Packet number: " + packetNumber);
-        int fileSize = Math.toIntExact(gDriveFile.getSize());
+        long fileSize = gDriveFile.getSize();
 
         String downloadUrl = gDriveFile.getDownloadUrl() + "?alt=media";
 
@@ -335,20 +335,19 @@ public class GoogleDriveHandler extends BaseHandler {
 
 
         try (CipherOutputStream cipherOutputStream = new CipherOutputStream(new FileOutputStream(new File(newFilePath)), cipher)) {
-            int encryptedFileSize = (fileSize / 16 + 1) * 16;
-            while(downloadedByteNr < encryptedFileSize) {
+            while(downloadedByteNr < fileSize) {
                 Request request = new Request();
                 request.setRequestUrl(downloadUrl);
                 request.setRequestType(RequestType.GET);
                 request.addRequestHeader("Authorization", "Bearer " + accessToken);
                 String byteString;
-                int currentPacketSize;
-                if (encryptedFileSize - downloadedByteNr > DOWNLOAD_PACKET_SIZE) {
+                long currentPacketSize;
+                if (fileSize - downloadedByteNr > DOWNLOAD_PACKET_SIZE) {
                     currentPacketSize = DOWNLOAD_PACKET_SIZE;
                     byteString = "bytes=" + downloadedByteNr + "-" + (downloadedByteNr + DOWNLOAD_PACKET_SIZE - 1);
                 } else {
-                    currentPacketSize = encryptedFileSize - downloadedByteNr;
-                    byteString = "bytes=" + downloadedByteNr + "-" + (encryptedFileSize - 1);
+                    currentPacketSize = fileSize - downloadedByteNr;
+                    byteString = "bytes=" + downloadedByteNr + "-" + (fileSize - 1);
                 }
                 request.addRequestHeader("Range", byteString);
                 request.setInputData(true);
