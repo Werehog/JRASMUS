@@ -11,15 +11,7 @@ import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
-
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import java.io.OutputStreamWriter;
 
 /**
  * Created by Richárd on 2016.09.13..
@@ -38,8 +30,6 @@ public class WebLogin {
 
         stage = new Stage();
         stage.setTitle("Login");
-        //stage.setWidth(400);
-        //stage.setHeight(550);
         Scene scene = new Scene(new Group());
 
         VBox root = new VBox();
@@ -61,15 +51,11 @@ public class WebLogin {
                             stage.close();
                         }
                         if (newState == Worker.State.SUCCEEDED && webEngine.getLocation().contains(trigger)) {
-                            //authCode = webEngine.getLocation();
-                            System.out.println("url changed: " + webEngine.getLocation());
-
                             int codeStart = webEngine.getLocation().indexOf(trigger);
                             authCode = webEngine.getLocation().substring(codeStart + 5);
                             int codeEnd = authCode.indexOf("&");
                             if(codeEnd != -1)
                                 authCode = authCode.substring(0, codeEnd);
-                            System.out.println(authCode);
                             stage.close();
                         }
 

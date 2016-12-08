@@ -28,7 +28,6 @@ public class Request {
     private String responseMessage;
 
     public Request() {
-        /*requestData = new byte[0];*/
         isRequestData = false;
         isResponseData = false;
     }
@@ -141,7 +140,6 @@ public class Request {
             }
         } catch (IOException e) {
             e.printStackTrace();
-            //TODO: nem vart hiba
         } finally {
             if (connection != null) {
                 connection.disconnect();

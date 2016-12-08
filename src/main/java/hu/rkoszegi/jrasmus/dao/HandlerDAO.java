@@ -14,7 +14,6 @@ import java.util.List;
  */
 public class HandlerDAO {
 
-    //@PersistenceContext(unitName = "JrasmusPersistenceUnit")
     private EntityManager em;
 
     public HandlerDAO() {

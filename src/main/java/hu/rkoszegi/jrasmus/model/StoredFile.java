@@ -130,7 +130,6 @@ public class StoredFile {
         SecretKey key = KeyHelper.getFileNameKey();
         CryptoHelper.encrypt(key,bais,baos);
         uploadName = Base64.getEncoder().encodeToString(baos.toByteArray());
-       /*uploadName = fileName;*/
     }
 
     public String getDecodedUploadName() {

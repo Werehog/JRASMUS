@@ -22,16 +22,12 @@ public class Main extends Application {
             System.exit(1);
         }
         try {
-
-            // Create a loader object and load View and Controller
             final FXMLLoader loader = new FXMLLoader(getClass().getClassLoader().getResource("sample.fxml"));
             final VBox viewRoot = (VBox) loader.load();
 
-            // Get controller object and initialize it
             final Controller controller = loader.getController();
             controller.initData(stage);
 
-            // Set scene (and the title of the window) and display it
             Scene scene = new Scene(viewRoot);
             stage.setScene(scene);
             stage.setTitle("JRASMUS");

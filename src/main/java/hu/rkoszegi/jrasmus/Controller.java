@@ -34,19 +34,11 @@ import java.util.*;
  */
 public class Controller {
 
-    HandlerDAO handlerDAO;
-    StoredFileDAO storedFileDAO;
+    private HandlerDAO handlerDAO;
+    private StoredFileDAO storedFileDAO;
 
-    //Layouts
     @FXML
     private VBox rootLayout;
-
-    // Tabs
-    @FXML
-    private TabPane tabPane;
-    @FXML
-    private Tab drivesTab;
-
 
     //<Files Tab>
     private ObservableList<StoredFile> storedFileList = FXCollections.observableArrayList();
@@ -57,8 +49,6 @@ public class Controller {
     private TableColumn<StoredFile, String> nameColumn;
     @FXML
     private TableColumn<StoredFile, String> pathColumn;
-    /*@FXML
-    private TableColumn<StoredFile, Long> sizeColumn;*/
     @FXML
     private TableColumn<StoredFile, String> driveLabelColumn;
     //</Files Tab>
@@ -84,12 +74,10 @@ public class Controller {
     @FXML
     private Button removeFileButton;
 
-    /**
-     * Controller initialization, it will be called after view was prepared
-     */
+
     @FXML
     public void initialize() {
-        //Medzsik to make GDR download work
+        //Make GDR download work
         CookieHandler.setDefault(new CookieManager(null, CookiePolicy.ACCEPT_ALL));
 
         //Files Tab
@@ -134,18 +122,10 @@ public class Controller {
         handlerDAO = new HandlerDAO();
     }
 
-    /**
-     * Initialize controller with data from AppMain (now only sets stage)
-     *
-     * @param stage The top level JavaFX container
-     */
+
     public void initData(Stage stage) {
         handlerList.addAll(handlerDAO.getAllStoredHandler());
         storedFileList.addAll(storedFileDAO.getAllStoredFile());
-
-        /*for (BaseHandler handler : handlerList) {
-            handler.refreshToken();
-        }*/
     }
 
     private void showHostUnavailableAlert() {
@@ -184,15 +164,12 @@ public class Controller {
     }
 
     private Dialog<char[]> passwordDialog() {
-        // Create the custom dialog.
         Dialog<char[]> dialog = new Dialog<>();
         dialog.setTitle("Password Dialog");
         dialog.setHeaderText("Please, enter a password for the file!");
 
-        // Set the button types.
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        // Create the username and password labels and fields.
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
@@ -204,21 +181,17 @@ public class Controller {
         grid.add(new Label("Password:"), 0, 0);
         grid.add(password, 1, 0);
 
-        // Enable/Disable login button depending on whether a username was entered.
         Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
         okButton.setDisable(true);
 
-        // Do some validation (using the Java 8 lambda syntax).
         password.textProperty().addListener((observable, oldValue, newValue) -> {
             okButton.setDisable(newValue.trim().isEmpty());
         });
 
         dialog.getDialogPane().setContent(grid);
 
-        // Request focus on the username field by default.
         Platform.runLater(() -> password.requestFocus());
 
-        // Convert the result to a username-password-pair when the login button is clicked.
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == ButtonType.OK) {
                 return password.getText().toCharArray();
@@ -266,7 +239,7 @@ public class Controller {
                         storedFile.setLastModified(new Date(file.lastModified()));
                         storedFile.setPath(file.getPath());
                         storedFile.generateUploadName(file.getName());
-                        //TODO: handler es fajlnev
+
                         byte[] salt = KeyHelper.generateSalt();
                         SecretKey key = KeyHelper.generateSecretKeyFromPassword(password, salt);
 
@@ -314,7 +287,6 @@ public class Controller {
                         DirectoryChooser directoryChooser = new DirectoryChooser();
                         File selectedDir = directoryChooser.showDialog(rootLayout.getScene().getWindow());
                         if (selectedDir != null) {
-                            //setstoredfilepath
                             StoredFile downloadFile = new StoredFile();
                             downloadFile.setPath(selectedDir.getPath());
                             downloadFile.setUploadName(file.getUploadName());

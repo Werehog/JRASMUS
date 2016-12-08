@@ -199,12 +199,9 @@ public class OneDriveHandler extends BaseHandler {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        //TODO: utolso uzenetet olvasni
     }
 
     private void cancelUpload(String uploadLink) {
-        //TODO: ellenorizni, kell-e
         System.out.println("cancelUpload called");
         HttpsURLConnection connection = null;
         try {
@@ -218,12 +215,7 @@ public class OneDriveHandler extends BaseHandler {
 
             System.out.println("Cancel response: " + connection.getResponseCode());
             System.out.println(connection.getResponseMessage());
-
-
-
         } catch (IOException e) {
-            //openconn es malformed url miatt
-            //TODO: malformedet lekezelni, io-t tovabbdobni: nincs internet detektalas :D
             e.printStackTrace();
         }
         finally {
@@ -330,7 +322,6 @@ public class OneDriveHandler extends BaseHandler {
             }
             System.out.println(out);
         }
-        //TODO: nextlink ha 200nal tobb van
     }
 
     @Override

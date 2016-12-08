@@ -95,12 +95,12 @@ public class GoogleDriveHandler extends BaseHandler {
     @Override
     protected void uploadLargeFile(File file, String uploadedFileName) {
         System.out.println("uploadLargeFile called");
-        String uploadLink = createUploadSession(file, uploadedFileName);
+        String uploadLink = createUploadSession(uploadedFileName);
         System.out.println(uploadLink);
         uploadFragments(file, uploadLink);
     }
 
-    private String createUploadSession(File file, String uploadedFileName) {
+    private String createUploadSession(String uploadedFileName) {
         Request request = new Request();
         request.setRequestUrl("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable");
         request.setRequestType(RequestType.POST);
@@ -181,7 +181,6 @@ public class GoogleDriveHandler extends BaseHandler {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        //TODO: utolso uzenetet olvasni
     }
 
 
@@ -241,12 +240,8 @@ public class GoogleDriveHandler extends BaseHandler {
         for(int i=0; i<array.size(); i++) {
             JsonObject object = array.getJsonObject(i);
             String out = "Name: " + object.getString("name");
-                /*if(object.containsKey("folder")) {
-                    out += " (folder)";
-                }*/
             System.out.println(out);
         }
-        //TODO: nextPageToken amig van még ahonnen ez jött
     }
 
     @Override
@@ -281,7 +276,6 @@ public class GoogleDriveHandler extends BaseHandler {
         JsonArray array = jsonObject.getJsonArray("files");
         for(int i=0; i<array.size(); i++) {
             JsonObject object = array.getJsonObject(i);
-            //TODO:tobb talalat
             gDriveFile = new GDriveFile(object.getString("id"), object.getString("name"), object.getString("webContentLink"), Long.parseLong(object.getString("size")));
         }
         return gDriveFile;
