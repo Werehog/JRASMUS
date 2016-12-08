@@ -13,6 +13,7 @@ import javax.json.*;
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 import java.io.*;
+import java.util.Calendar;
 import java.util.Properties;
 
 /**
@@ -50,6 +51,10 @@ public class GoogleDriveHandler extends BaseHandler {
         JsonObject obj = jSonReader.readObject();
         accessToken = obj.getString("access_token");
         refreshToken = obj.getString("refresh_token");
+
+        tokenExpireTime = Calendar.getInstance();
+        tokenExpireTime.add(Calendar.SECOND, obj.getInt("expires_in") - 10);
+        System.out.println("Expires in: " + tokenExpireTime.get(Calendar.MONTH) + " " + tokenExpireTime.get(Calendar.DAY_OF_MONTH)+ " "+ tokenExpireTime.get(Calendar.HOUR_OF_DAY)+ " "+ tokenExpireTime.get(Calendar.MINUTE)+ " "+ tokenExpireTime.get(Calendar.SECOND) );
     }
 
     @Override
@@ -183,7 +188,6 @@ public class GoogleDriveHandler extends BaseHandler {
     @Override
     protected void refreshTokenImpl() {
         System.out.println("refreshToken called");
-        System.out.println("Old access token: " + accessToken);
 
         Properties properties = new Properties();
         String clientId;
@@ -215,7 +219,10 @@ public class GoogleDriveHandler extends BaseHandler {
         JsonReader jSonReader = Json.createReader(request.getResponseStream());
         JsonObject obj = jSonReader.readObject();
         accessToken = obj.getString("access_token");
-        System.out.println("NEW Access token: " + accessToken);
+
+        tokenExpireTime = Calendar.getInstance();
+        tokenExpireTime.add(Calendar.SECOND, obj.getInt("expires_in") - 10);
+        System.out.println("Expires in: " + tokenExpireTime.get(Calendar.MONTH) + " " + tokenExpireTime.get(Calendar.DAY_OF_MONTH)+ " "+ tokenExpireTime.get(Calendar.HOUR_OF_DAY)+ " "+ tokenExpireTime.get(Calendar.MINUTE)+ " "+ tokenExpireTime.get(Calendar.SECOND) );
     }
 
     @Override

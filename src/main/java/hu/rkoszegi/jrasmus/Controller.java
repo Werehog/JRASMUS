@@ -3,6 +3,7 @@ package hu.rkoszegi.jrasmus;
 import hu.rkoszegi.jrasmus.crypto.KeyHelper;
 import hu.rkoszegi.jrasmus.dao.HandlerDAO;
 import hu.rkoszegi.jrasmus.dao.StoredFileDAO;
+import hu.rkoszegi.jrasmus.exception.HostUnavailableException;
 import hu.rkoszegi.jrasmus.handler.BaseHandler;
 import hu.rkoszegi.jrasmus.handler.GoogleDriveHandler;
 import hu.rkoszegi.jrasmus.handler.OneDriveHandler;
@@ -142,15 +143,43 @@ public class Controller {
         handlerList.addAll(handlerDAO.getAllStoredHandler());
         storedFileList.addAll(storedFileDAO.getAllStoredFile());
 
-        for (BaseHandler handler : handlerList) {
+        /*for (BaseHandler handler : handlerList) {
             handler.refreshToken();
-        }
+        }*/
     }
 
     private void showHostUnavailableAlert() {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Host unavailable!");
         alert.setHeaderText("Can not connect to host. Please check the internet connection!");
+        alert.showAndWait();
+    }
+
+    private void showFileDownloadedAlert() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("File downloaded!");
+        alert.setHeaderText("The file have been downloaded to the chosen directory!");
+        alert.showAndWait();
+    }
+
+    private void showHandlerAddedAlert() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Handler added!");
+        alert.setHeaderText("Handler added to the database!");
+        alert.showAndWait();
+    }
+
+    private void showHandlerDeletedAlert() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Handler deleted!");
+        alert.setHeaderText("Handler removed from the database!");
+        alert.showAndWait();
+    }
+
+    private void showFileDeletedAlert() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("File deleted!");
+        alert.setHeaderText("The chosen file have been deleted!");
         alert.showAndWait();
     }
 
@@ -216,100 +245,112 @@ public class Controller {
 
 
     public void addFile() {
-        FileChooser fileChooser = new FileChooser();
-        List<File> fileList = fileChooser.showOpenMultipleDialog(rootLayout.getScene().getWindow());
+        try {
+            FileChooser fileChooser = new FileChooser();
+            List<File> fileList = fileChooser.showOpenMultipleDialog(rootLayout.getScene().getWindow());
 
-        Dialog<char[]> passwordDialog = passwordDialog();
+            Dialog<char[]> passwordDialog = passwordDialog();
 
-        ChoiceDialog<BaseHandler> baseHandlerChoiceDialog = baseHandlerChoiceDialog();
+            ChoiceDialog<BaseHandler> baseHandlerChoiceDialog = baseHandlerChoiceDialog();
 
-        Optional<char[]> result = passwordDialog.showAndWait();
-        if (result.isPresent()) {
-            char[] password = result.get();
+            Optional<char[]> result = passwordDialog.showAndWait();
+            if (result.isPresent()) {
+                char[] password = result.get();
 
-            Optional<BaseHandler> handlerResult = baseHandlerChoiceDialog.showAndWait();
-            if (handlerResult.isPresent()) {
-                BaseHandler handler = handlerResult.get();
+                Optional<BaseHandler> handlerResult = baseHandlerChoiceDialog.showAndWait();
+                if (handlerResult.isPresent()) {
+                    BaseHandler handler = handlerResult.get();
 
-                for (File file : fileList) {
-                    StoredFile storedFile = new StoredFile();
-                    storedFile.setLastModified(new Date(file.lastModified()));
-                    storedFile.setPath(file.getPath());
-                    storedFile.generateUploadName(file.getName());
-                    //TODO: handler es fajlnev
-                    byte[] salt = KeyHelper.generateSalt();
-                    SecretKey key = KeyHelper.generateSecretKeyFromPassword(password, salt);
+                    for (File file : fileList) {
+                        StoredFile storedFile = new StoredFile();
+                        storedFile.setLastModified(new Date(file.lastModified()));
+                        storedFile.setPath(file.getPath());
+                        storedFile.generateUploadName(file.getName());
+                        //TODO: handler es fajlnev
+                        byte[] salt = KeyHelper.generateSalt();
+                        SecretKey key = KeyHelper.generateSecretKeyFromPassword(password, salt);
 
-                    Base64.Encoder base64Encoder = Base64.getEncoder();
-                    storedFile.setSalt(base64Encoder.encodeToString(salt));
-                    storedFile.setPwHash(base64Encoder.encodeToString(KeyHelper.generatePasswordHash(key)));
+                        Base64.Encoder base64Encoder = Base64.getEncoder();
+                        storedFile.setSalt(base64Encoder.encodeToString(salt));
+                        storedFile.setPwHash(base64Encoder.encodeToString(KeyHelper.generatePasswordHash(key)));
 
-                    handler.setKey(key);
-                    handler.uploadFile(file, storedFile.getUploadName());
-                    storedFile.setHandler(handler);
+                        handler.setKey(key);
+                        handler.uploadFile(file, storedFile.getUploadName());
+                        storedFile.setHandler(handler);
 
-                    storedFileList.add(storedFile);
+                        storedFileList.add(storedFile);
 
-                    storedFileDAO.persist(storedFile);
+                        storedFileDAO.persist(storedFile);
+                    }
+
+                    for (StoredFile file : storedFileDAO.getAllStoredFile()) {
+                        System.out.println(file.getPath());
+                    }
+                    System.out.println("Stored file nr: " + storedFileDAO.getAllStoredFile().size());
+
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("File Added!");
+                    alert.setHeaderText("File added to one of your storage!");
+                    alert.showAndWait();
                 }
-
-                for (StoredFile file : storedFileDAO.getAllStoredFile()) {
-                    System.out.println(file.getPath());
-                }
-                System.out.println("Stored file nr: " + storedFileDAO.getAllStoredFile().size());
-
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("File Added!");
-                alert.setHeaderText("File added to one of your storage!");
-                alert.showAndWait();
             }
+        } catch (HostUnavailableException e) {
+            showHostUnavailableAlert();
         }
-
 
     }
 
     public void downloadFile() {
-        StoredFile file = filesTable.getSelectionModel().getSelectedItem();
-        if (file != null) {
-            Dialog<char[]> passwordDialog = passwordDialog();
-            Optional<char[]> passwordResult = passwordDialog.showAndWait();
+        try {
+            StoredFile file = filesTable.getSelectionModel().getSelectedItem();
+            if (file != null) {
+                Dialog<char[]> passwordDialog = passwordDialog();
+                Optional<char[]> passwordResult = passwordDialog.showAndWait();
 
-            if (passwordResult.isPresent()) {
-                byte[] salt = Base64.getDecoder().decode(file.getSalt());
-                SecretKey key = KeyHelper.generateSecretKeyFromPassword(passwordResult.get(), salt);
-                if (Base64.getEncoder().encodeToString(KeyHelper.generatePasswordHash(key)).equals(file.getPwHash())) {
-                    DirectoryChooser directoryChooser = new DirectoryChooser();
-                    File selectedDir = directoryChooser.showDialog(rootLayout.getScene().getWindow());
-                    if (selectedDir != null) {
-                        //setstoredfilepath
-                        StoredFile downloadFile = new StoredFile();
-                        downloadFile.setPath(selectedDir.getPath());
-                        downloadFile.setUploadName(file.getUploadName());
-                        BaseHandler handler = file.getHandler();
-                        handler.setKey(key);
-                        handler.downloadFile(downloadFile);
-                        System.out.println(selectedDir.getPath());
+                if (passwordResult.isPresent()) {
+                    byte[] salt = Base64.getDecoder().decode(file.getSalt());
+                    SecretKey key = KeyHelper.generateSecretKeyFromPassword(passwordResult.get(), salt);
+                    if (Base64.getEncoder().encodeToString(KeyHelper.generatePasswordHash(key)).equals(file.getPwHash())) {
+                        DirectoryChooser directoryChooser = new DirectoryChooser();
+                        File selectedDir = directoryChooser.showDialog(rootLayout.getScene().getWindow());
+                        if (selectedDir != null) {
+                            //setstoredfilepath
+                            StoredFile downloadFile = new StoredFile();
+                            downloadFile.setPath(selectedDir.getPath());
+                            downloadFile.setUploadName(file.getUploadName());
+                            BaseHandler handler = file.getHandler();
+                            handler.setKey(key);
+                            handler.downloadFile(downloadFile);
+                            showFileDownloadedAlert();
+                        }
+                    } else {
+                        Alert alert = new Alert(Alert.AlertType.ERROR);
+                        alert.setTitle("Wrong Password");
+                        alert.setHeaderText("The given password is incorrect!");
+                        alert.showAndWait();
+                        return;
                     }
-                } else {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Wrong Password");
-                    alert.setHeaderText("The given password is incorrect!");
-                    alert.showAndWait();
-                    return;
                 }
+
+
             }
-
-
+        } catch (HostUnavailableException e) {
+            showHostUnavailableAlert();
         }
     }
 
     public void deleteFile() {
-        StoredFile file = filesTable.getSelectionModel().getSelectedItem();
-        if (file != null) {
-            BaseHandler handler = file.getHandler();
-            handler.deleteFile(file.getUploadName());
-            storedFileDAO.deleteByReference(file);
-            storedFileList.remove(storedFileList.indexOf(file));
+        try {
+            StoredFile file = filesTable.getSelectionModel().getSelectedItem();
+            if (file != null) {
+                BaseHandler handler = file.getHandler();
+                handler.deleteFile(file.getUploadName());
+                storedFileDAO.deleteByReference(file);
+                storedFileList.remove(storedFileList.indexOf(file));
+                showFileDeletedAlert();
+            }
+        } catch (HostUnavailableException e) {
+            showHostUnavailableAlert();
         }
     }
 
@@ -322,60 +363,70 @@ public class Controller {
 
     @FXML
     private void addAction(ActionEvent action) {
-        List<String> choices = new ArrayList<>();
-        choices.add("OneDrive");
-        choices.add("GoogleDrive");
+        try {
+            List<String> choices = new ArrayList<>();
+            choices.add("OneDrive");
+            choices.add("GoogleDrive");
 
-        ChoiceDialog<String> dialog = new ChoiceDialog<>("OneDrive", choices);
-        dialog.setTitle("Choose a Provider");
-        dialog.setHeaderText("Please, choose a provider");
-        dialog.setContentText("Provider:");
+            ChoiceDialog<String> dialog = new ChoiceDialog<>("OneDrive", choices);
+            dialog.setTitle("Choose a Provider");
+            dialog.setHeaderText("Please, choose a provider");
+            dialog.setContentText("Provider:");
 
-        Optional<String> result = dialog.showAndWait();
-        if (result.isPresent()) {
-            System.out.println("Your choice: " + result.get());
-            BaseHandler newHandler = null;
-            switch (result.get()) {
-                case "OneDrive":
-                    newHandler = new OneDriveHandler();
-                    break;
-                case "GoogleDrive":
-                    newHandler = new GoogleDriveHandler();
-                    break;
-            }
-            if (newHandler != null) {
-                newHandler.login();
-                newHandler.setDriveMetaData();
-
-                TextInputDialog textInputDialog = new TextInputDialog();
-                textInputDialog.setTitle("Handler Label");
-                textInputDialog.setContentText("Please enter a label for the new drive:");
-
-                Optional<String> label = textInputDialog.showAndWait();
-                if (label.isPresent()) {
-                    newHandler.setLabel(label.get());
+            Optional<String> result = dialog.showAndWait();
+            if (result.isPresent()) {
+                System.out.println("Your choice: " + result.get());
+                BaseHandler newHandler = null;
+                switch (result.get()) {
+                    case "OneDrive":
+                        newHandler = new OneDriveHandler();
+                        break;
+                    case "GoogleDrive":
+                        newHandler = new GoogleDriveHandler();
+                        break;
                 }
+                if (newHandler != null) {
+                    newHandler.login();
+                    newHandler.setDriveMetaData();
 
-                handlerDAO.persist(newHandler);
-                newHandler.setIdProperty(Long.toString(newHandler.getId()));
-                handlerList.add(newHandler);
+                    TextInputDialog textInputDialog = new TextInputDialog();
+                    textInputDialog.setTitle("Handler Label");
+                    textInputDialog.setContentText("Please enter a label for the new drive:");
+
+                    Optional<String> label = textInputDialog.showAndWait();
+                    if (label.isPresent()) {
+                        newHandler.setLabel(label.get());
+                    }
+
+                    handlerDAO.persist(newHandler);
+                    newHandler.setIdProperty(Long.toString(newHandler.getId()));
+                    handlerList.add(newHandler);
+                    showHandlerAddedAlert();
+                }
             }
+        } catch (HostUnavailableException e) {
+            showHostUnavailableAlert();
         }
     }
 
 
     @FXML
     private void deleteAction(ActionEvent action) {
-        BaseHandler selectedHandler = handlersTable.getSelectionModel().getSelectedItem();
-        if (selectedHandler != null) {
-            for (StoredFile file : storedFileDAO.findByHandler(selectedHandler)) {
-                selectedHandler.deleteFile(file.getUploadName());
-                storedFileDAO.deleteByReference(file);
-                storedFileList.remove(storedFileList.indexOf(file));
-            }
+        try {
+            BaseHandler selectedHandler = handlersTable.getSelectionModel().getSelectedItem();
+            if (selectedHandler != null) {
+                for (StoredFile file : storedFileDAO.findByHandler(selectedHandler)) {
+                    selectedHandler.deleteFile(file.getUploadName());
+                    storedFileDAO.deleteByReference(file);
+                    storedFileList.remove(storedFileList.indexOf(file));
+                }
 
-            handlerDAO.deleteByName(selectedHandler.getLabel());
-            handlerList.remove(handlerList.indexOf(selectedHandler));
+                handlerDAO.deleteByName(selectedHandler.getLabel());
+                handlerList.remove(handlerList.indexOf(selectedHandler));
+                showHandlerDeletedAlert();
+            }
+        } catch (HostUnavailableException e) {
+            showHostUnavailableAlert();
         }
     }
 }

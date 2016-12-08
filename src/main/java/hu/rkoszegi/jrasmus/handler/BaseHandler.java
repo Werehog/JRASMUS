@@ -41,6 +41,8 @@ public abstract class BaseHandler extends AbstractEntity {
 
     private String label;
 
+    protected Calendar tokenExpireTime;
+
     @Transient
     protected static final long UPLOAD_PACKET_SIZE = 7* 320 * 1024;
     @Transient
@@ -118,6 +120,9 @@ public abstract class BaseHandler extends AbstractEntity {
 
     public void setDriveMetaData() {
         checkInternetConnection();
+        if(isTokenInvalid()) {
+            refreshToken();
+        }
         setDriveMetaDataImpl();
     }
 
@@ -125,6 +130,9 @@ public abstract class BaseHandler extends AbstractEntity {
 
     public void uploadFile(File file, String uploadedFileName) {
         checkInternetConnection();
+        if(isTokenInvalid()) {
+            refreshToken();
+        }
         if(file.length() < 10000000) {
             uploadSmallFile(file, uploadedFileName);
         } else {
@@ -138,6 +146,9 @@ public abstract class BaseHandler extends AbstractEntity {
 
     public void downloadFile(StoredFile storedFile) {
         checkInternetConnection();
+        if(isTokenInvalid()) {
+            refreshToken();
+        }
         downloadFileImpl(storedFile);
     }
 
@@ -145,6 +156,9 @@ public abstract class BaseHandler extends AbstractEntity {
 
     public void listFolder () {
         checkInternetConnection();
+        if(isTokenInvalid()) {
+            refreshToken();
+        }
         listFolderImpl();
     }
 
@@ -152,6 +166,9 @@ public abstract class BaseHandler extends AbstractEntity {
 
     public void deleteFile(String fileName) {
         checkInternetConnection();
+        if(isTokenInvalid()) {
+            refreshToken();
+        }
         deleteFileImpl(fileName);
     }
 
@@ -349,6 +366,13 @@ public abstract class BaseHandler extends AbstractEntity {
         if(!available) {
             throw new HostUnavailableException("Host is unavailable");
         }
+    }
+
+    private boolean isTokenInvalid() {
+        if(Calendar.getInstance().compareTo(tokenExpireTime) >= 0) {
+            return true;
+        }
+        return false;
     }
 
     //Providers lista miatt

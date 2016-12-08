@@ -18,6 +18,7 @@ import javax.persistence.Entity;
 import java.io.*;
 import java.net.URL;
 import java.nio.file.*;
+import java.util.Calendar;
 import java.util.Properties;
 
 /**
@@ -54,12 +55,15 @@ public class OneDriveHandler extends BaseHandler {
 
         accessToken = obj.getString("access_token");
         refreshToken = obj.getString("refresh_token");
+
+        tokenExpireTime = Calendar.getInstance();
+        tokenExpireTime.add(Calendar.SECOND, obj.getInt("expires_in") - 10);
+        System.out.println("Expires in: " + tokenExpireTime.toString());
     }
 
     @Override
     protected void refreshTokenImpl() {
         System.out.println("refreshToken called");
-        System.out.println("Old access token: " + accessToken);
 
         Properties properties = new Properties();
         String clientId;
@@ -94,7 +98,10 @@ public class OneDriveHandler extends BaseHandler {
         JsonObject obj = jSonReader.readObject();
 
         accessToken = obj.getString("access_token");
-        System.out.println("NEW Access token: " + accessToken);
+
+        tokenExpireTime = Calendar.getInstance();
+        tokenExpireTime.add(Calendar.SECOND, obj.getInt("expires_in") - 10);
+        System.out.println("Expires in: " + tokenExpireTime.toString());
     }
 
     @Override

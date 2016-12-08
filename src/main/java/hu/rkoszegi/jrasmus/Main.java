@@ -3,6 +3,7 @@ package hu.rkoszegi.jrasmus;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -11,7 +12,15 @@ public class Main extends Application {
 
     @Override
     public void start(final Stage stage) throws Exception{
-       DatabaseManager.initDB();
+        try {
+            DatabaseManager.initDB();
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Cannot access database!");
+            alert.setHeaderText("The database file cannot be made. Try to run the progam with admin permission!");
+            alert.showAndWait();
+            System.exit(1);
+        }
         try {
 
             // Create a loader object and load View and Controller
